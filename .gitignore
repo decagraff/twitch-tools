@@ -1,9 +1,9 @@
-# Crear .gitignore
-New-Item -Path .gitignore -ItemType File
-```
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json.bak
 
-Luego abre el `.gitignore` y agrega esto:
-```
 # Python
 __pycache__/
 *.py[cod]
@@ -46,3 +46,11 @@ Thumbs.db
 
 # Archivos vacíos o temporales
 archivo.json
+
+# Build outputs
+client/dist/
+server/dist/
+
+# Environment variables
+.env
+.env.local

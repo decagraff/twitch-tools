@@ -127,6 +127,27 @@ export interface TokenResponse {
   message?: string;
 }
 
+export interface StartAuthorizationFlowRequest {
+  twitchConfigId: string;
+  scopes: string[];
+  state: string;
+}
+
+export interface StartAuthorizationFlowResponse {
+  authorizationUrl: string;
+  redirectUri: string;
+}
+
+export interface HandleOAuthCallbackRequest {
+  twitchConfigId: string;
+  code: string;
+  name?: string;
+}
+
+export interface RefreshTokenRequest {
+  tokenId: string;
+}
+
 export interface Webhook {
   id: string;
   subscriptionId: string;

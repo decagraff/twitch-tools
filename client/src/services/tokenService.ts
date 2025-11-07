@@ -8,6 +8,9 @@ import type {
   PollUserTokenResponse,
   TokensResponse,
   TokenResponse,
+  StartAuthorizationFlowRequest,
+  StartAuthorizationFlowResponse,
+  HandleOAuthCallbackRequest,
 } from '../types/index';
 
 /**
@@ -60,6 +63,30 @@ const tokenService = {
    */
   async deleteToken(id: string): Promise<void> {
     await api.delete(`/tokens/${id}`);
+  },
+
+  /**
+   * Start Authorization Code Flow (returns authorization URL)
+   */
+  async startAuthorizationFlow(data: StartAuthorizationFlowRequest): Promise<StartAuthorizationFlowResponse> {
+    const response = await api.post<StartAuthorizationFlowResponse>('/tokens/user/authorize', data);
+    return response.data;
+  },
+
+  /**
+   * Handle OAuth callback (exchange code for token)
+   */
+  async handleOAuthCallback(data: HandleOAuthCallbackRequest): Promise<SavedToken> {
+    const response = await api.post<TokenResponse>('/tokens/user/callback', data);
+    return response.data.token;
+  },
+
+  /**
+   * Refresh an existing token using its refresh token
+   */
+  async refreshToken(tokenId: string): Promise<SavedToken> {
+    const response = await api.post<TokenResponse>(`/tokens/${tokenId}/refresh`);
+    return response.data.token;
   },
 };
 

@@ -53,6 +53,7 @@ model SavedToken {
   twitchConfigId  String
   tokenType       String   // "user" or "app"
   accessToken     String   // Encrypted
+  refreshToken    String?  // Encrypted (only for user tokens)
   scopes          String[] // Array of scopes
   channelLogin    String?  // Twitch username (null for app tokens)
   channelId       String?  // Twitch user ID (null for app tokens)

@@ -6,6 +6,9 @@ import {
   validatePollUserToken,
   validateDeleteToken,
   validateGetToken,
+  validateStartAuthorizationFlow,
+  validateAuthorizationCallback,
+  validateRefreshToken,
 } from '../middleware/tokenValidators';
 import {
   getAllTokens,
@@ -14,6 +17,9 @@ import {
   startUserToken,
   pollUserToken,
   deleteToken,
+  startAuthorizationFlow,
+  handleAuthorizationCallback,
+  refreshToken,
 } from '../controllers/tokenController';
 
 const router = Router();
@@ -36,6 +42,15 @@ router.post('/user/start', authMiddleware, validateStartUserToken, startUserToke
 
 // POST /api/tokens/user/poll - Poll for user access token completion
 router.post('/user/poll', authMiddleware, validatePollUserToken, pollUserToken);
+
+// POST /api/tokens/user/authorize - Start Authorization Code Flow (returns auth URL)
+router.post('/user/authorize', authMiddleware, validateStartAuthorizationFlow, startAuthorizationFlow);
+
+// POST /api/tokens/user/callback - Handle OAuth callback (exchange code for token)
+router.post('/user/callback', authMiddleware, validateAuthorizationCallback, handleAuthorizationCallback);
+
+// POST /api/tokens/:id/refresh - Refresh an existing token
+router.post('/:id/refresh', authMiddleware, validateRefreshToken, refreshToken);
 
 // DELETE /api/tokens/:id - Delete a saved token
 router.delete('/:id', authMiddleware, validateDeleteToken, deleteToken);

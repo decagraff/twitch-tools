@@ -7,6 +7,9 @@ import {
   validateToken,
   startDeviceFlow,
   pollDeviceToken,
+  generateAuthorizationUrl,
+  exchangeCodeForToken,
+  refreshAccessToken,
 } from '../services/twitchApiService';
 
 /**
@@ -454,6 +457,275 @@ export async function pollUserToken(req: Request, res: Response): Promise<void> 
     res.status(500).json({
       error: 'Server error',
       message: error.message || 'Failed to poll for user token',
+    });
+  }
+}
+
+/**
+ * Start Authorization Code Flow - Generate authorization URL
+ */
+export async function startAuthorizationFlow(req: Request, res: Response): Promise<void> {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const { twitchConfigId, scopes, state } = req.body;
+
+    // Verify the Twitch config belongs to the user
+    const twitchConfig = await prisma.twitchConfig.findUnique({
+      where: { id: twitchConfigId },
+    });
+
+    if (!twitchConfig || twitchConfig.userId !== userId) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'Twitch configuration not found',
+      });
+      return;
+    }
+
+    // Get redirect URI from environment
+    const redirectUri = process.env.TWITCH_REDIRECT_URI || 'http://localhost:5173/oauth/callback';
+
+    // Generate authorization URL
+    const authUrl = generateAuthorizationUrl(
+      twitchConfig.clientId,
+      redirectUri,
+      scopes,
+      state
+    );
+
+    res.json({
+      authorizationUrl: authUrl,
+      redirectUri,
+    });
+  } catch (error: any) {
+    console.error('Start authorization flow error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: error.message || 'Failed to start authorization flow',
+    });
+  }
+}
+
+/**
+ * Handle OAuth callback - Exchange code for token
+ */
+export async function handleAuthorizationCallback(req: Request, res: Response): Promise<void> {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const { twitchConfigId, code, name } = req.body;
+
+    // Verify the Twitch config belongs to the user
+    const twitchConfig = await prisma.twitchConfig.findUnique({
+      where: { id: twitchConfigId },
+    });
+
+    if (!twitchConfig || twitchConfig.userId !== userId) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'Twitch configuration not found',
+      });
+      return;
+    }
+
+    // Decrypt client secret
+    const clientSecret = decrypt(twitchConfig.clientSecret);
+    const redirectUri = process.env.TWITCH_REDIRECT_URI || 'http://localhost:5173/oauth/callback';
+
+    // Exchange code for token
+    const tokenData = await exchangeCodeForToken(
+      twitchConfig.clientId,
+      clientSecret,
+      code,
+      redirectUri
+    );
+
+    // Validate the token to get user info
+    const validation = await validateToken(tokenData.accessToken);
+
+    // Calculate expiration
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expiresIn);
+
+    // Encrypt tokens
+    const encryptedAccessToken = encrypt(tokenData.accessToken);
+    const encryptedRefreshToken = encrypt(tokenData.refreshToken);
+
+    // Save token to database
+    const savedToken = await prisma.savedToken.create({
+      data: {
+        userId,
+        twitchConfigId,
+        tokenType: 'user',
+        accessToken: encryptedAccessToken,
+        refreshToken: encryptedRefreshToken,
+        scopes: tokenData.scopes,
+        channelLogin: validation.login,
+        channelId: validation.userId,
+        name: name || null,
+        expiresAt,
+      },
+      include: {
+        twitchConfig: {
+          select: {
+            id: true,
+            clientId: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Return the token
+    const responseToken = {
+      id: savedToken.id,
+      tokenType: savedToken.tokenType,
+      accessToken: tokenData.accessToken,
+      scopes: savedToken.scopes,
+      channelLogin: savedToken.channelLogin,
+      channelId: savedToken.channelId,
+      name: savedToken.name,
+      expiresAt: savedToken.expiresAt?.toISOString() || null,
+      createdAt: savedToken.createdAt.toISOString(),
+      updatedAt: savedToken.updatedAt.toISOString(),
+      twitchConfig: savedToken.twitchConfig,
+    };
+
+    res.status(201).json({
+      message: 'User access token generated successfully',
+      token: responseToken,
+    });
+  } catch (error: any) {
+    console.error('Handle authorization callback error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: error.message || 'Failed to complete authorization',
+    });
+  }
+}
+
+/**
+ * Refresh an existing token using its refresh token
+ */
+export async function refreshToken(req: Request, res: Response): Promise<void> {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    // Get the token
+    const token = await prisma.savedToken.findUnique({
+      where: { id },
+      include: {
+        twitchConfig: true,
+      },
+    });
+
+    if (!token) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'Token not found',
+      });
+      return;
+    }
+
+    // Ensure the token belongs to the authenticated user
+    if (token.userId !== userId) {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have permission to access this token',
+      });
+      return;
+    }
+
+    // Only user tokens have refresh tokens
+    if (token.tokenType !== 'user' || !token.refreshToken) {
+      res.status(400).json({
+        error: 'Bad request',
+        message: 'This token cannot be refreshed',
+      });
+      return;
+    }
+
+    // Decrypt refresh token and client secret
+    const refreshTokenValue = decrypt(token.refreshToken);
+    const clientSecret = decrypt(token.twitchConfig.clientSecret);
+
+    // Refresh the token
+    const newTokenData = await refreshAccessToken(
+      token.twitchConfig.clientId,
+      clientSecret,
+      refreshTokenValue
+    );
+
+    // Calculate new expiration
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + newTokenData.expiresIn);
+
+    // Encrypt new tokens
+    const encryptedAccessToken = encrypt(newTokenData.accessToken);
+    const encryptedRefreshToken = encrypt(newTokenData.refreshToken);
+
+    // Update token in database
+    const updatedToken = await prisma.savedToken.update({
+      where: { id },
+      data: {
+        accessToken: encryptedAccessToken,
+        refreshToken: encryptedRefreshToken,
+        scopes: newTokenData.scopes,
+        expiresAt,
+      },
+      include: {
+        twitchConfig: {
+          select: {
+            id: true,
+            clientId: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Return updated token
+    const responseToken = {
+      id: updatedToken.id,
+      tokenType: updatedToken.tokenType,
+      accessToken: newTokenData.accessToken,
+      scopes: updatedToken.scopes,
+      channelLogin: updatedToken.channelLogin,
+      channelId: updatedToken.channelId,
+      name: updatedToken.name,
+      expiresAt: updatedToken.expiresAt?.toISOString() || null,
+      createdAt: updatedToken.createdAt.toISOString(),
+      updatedAt: updatedToken.updatedAt.toISOString(),
+      twitchConfig: updatedToken.twitchConfig,
+    };
+
+    res.json({
+      message: 'Token refreshed successfully',
+      token: responseToken,
+    });
+  } catch (error: any) {
+    console.error('Refresh token error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: error.message || 'Failed to refresh token',
     });
   }
 }

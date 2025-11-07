@@ -178,3 +178,107 @@ export async function pollDeviceToken(
     throw new Error('Failed to poll for device token');
   }
 }
+
+/**
+ * Generate Authorization Code Flow URL
+ * @param clientId - Twitch application Client ID
+ * @param redirectUri - Redirect URI configured in Twitch app
+ * @param scopes - Array of scopes to request
+ * @param state - Random state for CSRF protection
+ * @returns Authorization URL to redirect user to
+ */
+export function generateAuthorizationUrl(
+  clientId: string,
+  redirectUri: string,
+  scopes: string[],
+  state: string
+): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: scopes.join(' '),
+    state,
+  });
+
+  return `https://id.twitch.tv/oauth2/authorize?${params.toString()}`;
+}
+
+/**
+ * Exchange authorization code for access token (Authorization Code Flow)
+ * @param clientId - Twitch application Client ID
+ * @param clientSecret - Twitch application Client Secret
+ * @param code - Authorization code from redirect
+ * @param redirectUri - Same redirect URI used in authorization
+ * @returns Access token, refresh token, and expiration
+ */
+export async function exchangeCodeForToken(
+  clientId: string,
+  clientSecret: string,
+  code: string,
+  redirectUri: string
+): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; scopes: string[] }> {
+  try {
+    const response = await axios.post(TWITCH_AUTH_URL, null, {
+      params: {
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+      },
+    });
+
+    return {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      expiresIn: response.data.expires_in,
+      scopes: Array.isArray(response.data.scope)
+        ? response.data.scope
+        : (response.data.scope ? response.data.scope.split(' ') : []),
+    };
+  } catch (error: any) {
+    console.error('Code exchange error:', error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || 'Failed to exchange authorization code'
+    );
+  }
+}
+
+/**
+ * Refresh an access token using a refresh token
+ * @param clientId - Twitch application Client ID
+ * @param clientSecret - Twitch application Client Secret
+ * @param refreshToken - Refresh token from previous authorization
+ * @returns New access token and refresh token
+ */
+export async function refreshAccessToken(
+  clientId: string,
+  clientSecret: string,
+  refreshToken: string
+): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; scopes: string[] }> {
+  try {
+    const response = await axios.post(TWITCH_AUTH_URL, null, {
+      params: {
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      },
+    });
+
+    return {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      expiresIn: response.data.expires_in,
+      scopes: Array.isArray(response.data.scope)
+        ? response.data.scope
+        : (response.data.scope ? response.data.scope.split(' ') : []),
+    };
+  } catch (error: any) {
+    console.error('Token refresh error:', error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || 'Failed to refresh access token'
+    );
+  }
+}

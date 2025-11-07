@@ -86,3 +86,64 @@ export const validateGetToken = [
     .isUUID()
     .withMessage('Invalid token ID'),
 ];
+
+/**
+ * Validation for starting authorization code flow
+ */
+export const validateStartAuthorizationFlow = [
+  body('twitchConfigId')
+    .trim()
+    .notEmpty()
+    .withMessage('Twitch Config ID is required')
+    .isUUID()
+    .withMessage('Invalid Twitch Config ID format'),
+
+  body('scopes')
+    .isArray({ min: 1 })
+    .withMessage('At least one scope is required'),
+
+  body('scopes.*')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Each scope must be a non-empty string'),
+
+  body('state')
+    .trim()
+    .notEmpty()
+    .withMessage('State parameter is required')
+    .isLength({ min: 32, max: 128 })
+    .withMessage('State must be between 32 and 128 characters'),
+];
+
+/**
+ * Validation for handling authorization callback
+ */
+export const validateAuthorizationCallback = [
+  body('twitchConfigId')
+    .trim()
+    .notEmpty()
+    .withMessage('Twitch Config ID is required')
+    .isUUID()
+    .withMessage('Invalid Twitch Config ID format'),
+
+  body('code')
+    .trim()
+    .notEmpty()
+    .withMessage('Authorization code is required'),
+
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Name must be between 1 and 100 characters'),
+];
+
+/**
+ * Validation for refreshing a token
+ */
+export const validateRefreshToken = [
+  param('id')
+    .isUUID()
+    .withMessage('Invalid token ID'),
+];

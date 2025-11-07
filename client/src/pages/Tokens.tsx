@@ -40,6 +40,7 @@ export const Tokens: React.FC = () => {
     scopes: [] as string[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Analytics', 'Channel', 'Moderator', 'User', 'Chat']);
 
   const handleLogout = () => {
     logout();
@@ -165,6 +166,26 @@ export const Tokens: React.FC = () => {
     }
   };
 
+  const handleRefreshToken = async (token: SavedToken) => {
+    if (token.tokenType !== 'user') {
+      toast.error('Only user tokens can be refreshed');
+      return;
+    }
+
+    try {
+      const refreshedToken = await tokenService.refreshToken(token.id);
+      toast.success('Token refreshed successfully!');
+      loadTokens();
+
+      // Show the refreshed token
+      setSelectedToken(refreshedToken);
+      setShowTokenModal(true);
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to refresh token';
+      toast.error(message);
+    }
+  };
+
   // User Token Functions
   const handleOpenUserTokenModal = () => {
     if (configs.length === 0) {
@@ -229,6 +250,57 @@ export const Tokens: React.FC = () => {
     setUserTokenFormData((prev) => ({ ...prev, scopes: [] }));
   };
 
+  const toggleCategory = (category: string) => {
+    setExpandedCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((c) => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const getScopesGrouped = () => {
+    const allScopes = [
+      'analytics:read:extensions', 'analytics:read:games', 'bits:read',
+      'channel:bot', 'channel:manage:ads', 'channel:read:ads',
+      'channel:manage:broadcast', 'channel:read:charity', 'channel:edit:commercial',
+      'channel:read:editors', 'channel:manage:extensions', 'channel:read:goals',
+      'channel:read:guest_star', 'channel:manage:guest_star', 'channel:read:hype_train',
+      'channel:manage:moderators', 'channel:moderate', 'channel:read:polls',
+      'channel:manage:polls', 'channel:read:predictions', 'channel:manage:predictions',
+      'channel:manage:raids', 'channel:read:redemptions', 'channel:manage:redemptions',
+      'channel:manage:schedule', 'channel:read:stream_key', 'channel:read:subscriptions',
+      'channel:manage:videos', 'channel:read:vips', 'channel:manage:vips',
+      'clips:edit', 'moderation:read', 'moderator:manage:announcements',
+      'moderator:manage:automod', 'moderator:read:automod_settings',
+      'moderator:manage:automod_settings', 'moderator:read:banned_users',
+      'moderator:manage:banned_users', 'moderator:read:blocked_terms',
+      'moderator:manage:blocked_terms', 'moderator:read:chat_messages',
+      'moderator:manage:chat_messages', 'moderator:read:chat_settings',
+      'moderator:manage:chat_settings', 'moderator:read:chatters',
+      'moderator:read:followers', 'moderator:read:guest_star',
+      'moderator:manage:guest_star', 'moderator:read:moderators',
+      'moderator:read:shield_mode', 'moderator:manage:shield_mode',
+      'moderator:read:shoutouts', 'moderator:manage:shoutouts',
+      'moderator:read:suspicious_users', 'moderator:read:unban_requests',
+      'moderator:manage:unban_requests', 'moderator:read:vips',
+      'moderator:read:warnings', 'moderator:manage:warnings',
+      'user:bot', 'user:edit', 'user:edit:broadcast',
+      'user:read:blocked_users', 'user:manage:blocked_users', 'user:read:broadcast',
+      'user:read:chat', 'user:manage:chat_color', 'user:read:email',
+      'user:read:emotes', 'user:read:follows', 'user:read:moderated_channels',
+      'user:read:subscriptions', 'user:read:whispers', 'user:manage:whispers',
+      'user:write:chat', 'chat:read', 'chat:edit', 'whispers:read'
+    ];
+
+    return {
+      'Analytics': allScopes.filter(s => s.startsWith('analytics:')),
+      'Channel': allScopes.filter(s => s.startsWith('channel:') || s === 'bits:read' || s === 'clips:edit'),
+      'Moderator': allScopes.filter(s => s.startsWith('moderator:') || s.startsWith('moderation:')),
+      'User': allScopes.filter(s => s.startsWith('user:')),
+      'Chat': allScopes.filter(s => s.startsWith('chat:') || s.startsWith('whispers:')),
+    };
+  };
+
   const handleStartUserToken = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -245,23 +317,28 @@ export const Tokens: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      const requestData: StartUserTokenRequest = {
+      // Generate random state for CSRF protection
+      const state = crypto.randomUUID() + crypto.randomUUID();
+
+      // Store state and config data in sessionStorage for callback
+      sessionStorage.setItem('oauth_state', state);
+      sessionStorage.setItem('oauth_data', JSON.stringify({
+        twitchConfigId: userTokenFormData.twitchConfigId,
+        name: userTokenFormData.name.trim() || undefined,
+      }));
+
+      // Get authorization URL from backend
+      const result = await tokenService.startAuthorizationFlow({
         twitchConfigId: userTokenFormData.twitchConfigId,
         scopes: userTokenFormData.scopes,
-        name: userTokenFormData.name.trim() || undefined,
-      };
+        state,
+      });
 
-      const flowData = await tokenService.startUserToken(requestData);
-      setDeviceFlowData(flowData);
-      setShowUserTokenModal(false);
-      setShowDeviceFlowModal(true);
-
-      // Start polling
-      startPolling(flowData.deviceCode, flowData.interval);
+      // Redirect to Twitch authorization page
+      window.location.href = result.authorizationUrl;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to start user token flow';
+      const message = error.response?.data?.message || 'Failed to start authorization';
       toast.error(message);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -498,6 +575,15 @@ export const Tokens: React.FC = () => {
                     >
                       View Token
                     </button>
+                    {token.tokenType === 'user' && (
+                      <button
+                        onClick={() => handleRefreshToken(token)}
+                        className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors"
+                        title="Refresh this token"
+                      >
+                        Refresh
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(token)}
                       className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
@@ -651,24 +737,52 @@ export const Tokens: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 bg-twitch-dark border border-twitch-gray-dark rounded-lg">
-                  {['analytics:read:extensions', 'analytics:read:games', 'bits:read', 'channel:bot', 'channel:manage:ads', 'channel:read:ads', 'channel:manage:broadcast', 'channel:read:charity', 'channel:edit:commercial', 'channel:read:editors', 'channel:manage:extensions', 'channel:read:goals', 'channel:read:guest_star', 'channel:manage:guest_star', 'channel:read:hype_train', 'channel:manage:moderators', 'channel:moderate', 'channel:read:polls', 'channel:manage:polls', 'channel:read:predictions', 'channel:manage:predictions', 'channel:manage:raids', 'channel:read:redemptions', 'channel:manage:redemptions', 'channel:manage:schedule', 'channel:read:stream_key', 'channel:read:subscriptions', 'channel:manage:videos', 'channel:read:vips', 'channel:manage:vips', 'clips:edit', 'moderation:read', 'moderator:manage:announcements', 'moderator:manage:automod', 'moderator:read:automod_settings', 'moderator:manage:automod_settings', 'moderator:read:banned_users', 'moderator:manage:banned_users', 'moderator:read:blocked_terms', 'moderator:manage:blocked_terms', 'moderator:read:chat_messages', 'moderator:manage:chat_messages', 'moderator:read:chat_settings', 'moderator:manage:chat_settings', 'moderator:read:chatters', 'moderator:read:followers', 'moderator:read:guest_star', 'moderator:manage:guest_star', 'moderator:read:moderators', 'moderator:read:shield_mode', 'moderator:manage:shield_mode', 'moderator:read:shoutouts', 'moderator:manage:shoutouts', 'moderator:read:suspicious_users', 'moderator:read:unban_requests', 'moderator:manage:unban_requests', 'moderator:read:vips', 'moderator:read:warnings', 'moderator:manage:warnings', 'user:bot', 'user:edit', 'user:edit:broadcast', 'user:read:blocked_users', 'user:manage:blocked_users', 'user:read:broadcast', 'user:read:chat', 'user:manage:chat_color', 'user:read:email', 'user:read:emotes', 'user:read:follows', 'user:read:moderated_channels', 'user:read:subscriptions', 'user:read:whispers', 'user:manage:whispers', 'user:write:chat', 'chat:read', 'chat:edit', 'whispers:read'].map((scope) => (
-                    <label
-                      key={scope}
-                      className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
-                        userTokenFormData.scopes.includes(scope)
-                          ? 'bg-twitch-purple/20 border border-twitch-purple'
-                          : 'bg-twitch-dark-light hover:bg-white/5'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={userTokenFormData.scopes.includes(scope)}
-                        onChange={() => handleToggleScope(scope)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-white">{scope}</span>
-                    </label>
+                <div className="max-h-80 overflow-y-auto bg-twitch-dark border border-twitch-gray-dark rounded-lg">
+                  {Object.entries(getScopesGrouped()).map(([category, scopes]) => (
+                    <div key={category} className="border-b border-twitch-gray-dark last:border-b-0">
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(category)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-twitch-dark-light hover:bg-white/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{category}</span>
+                          <span className="text-xs text-white/60">({scopes.length} scopes)</span>
+                        </div>
+                        <svg
+                          className={`w-5 h-5 text-white/60 transition-transform ${
+                            expandedCategories.includes(category) ? 'rotate-180' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {expandedCategories.includes(category) && (
+                        <div className="grid grid-cols-2 gap-2 p-3">
+                          {scopes.map((scope) => (
+                            <label
+                              key={scope}
+                              className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
+                                userTokenFormData.scopes.includes(scope)
+                                  ? 'bg-twitch-purple/20 border border-twitch-purple'
+                                  : 'bg-twitch-dark hover:bg-white/5'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={userTokenFormData.scopes.includes(scope)}
+                                onChange={() => handleToggleScope(scope)}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm text-white">{scope}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
                 <p className="text-xs text-white/40 mt-2">
@@ -677,14 +791,14 @@ export const Tokens: React.FC = () => {
               </div>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                 <p className="text-sm text-blue-400">
-                  <strong>OAuth Device Flow:</strong> After clicking continue, you'll be
-                  shown a code to authorize on Twitch. This allows users to grant access
-                  to their account data.
+                  <strong>OAuth Authorization:</strong> After clicking continue, you'll be
+                  redirected to Twitch to authorize access. Once authorized, you'll be brought
+                  back automatically with your new token.
                 </p>
               </div>
               <div className="flex gap-3 pt-4">
                 <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? 'Starting...' : 'Continue'}
+                  {isSubmitting ? 'Redirecting...' : 'Authorize on Twitch'}
                 </Button>
                 <button
                   type="button"

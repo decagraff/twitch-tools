@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import twitchConfigRoutes from './routes/twitchConfigRoutes';
+import tokenRoutes from './routes/tokenRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +50,9 @@ app.use('/api/auth', authRoutes);
 
 // Twitch Config routes
 app.use('/api/twitch-configs', twitchConfigRoutes);
+
+// Token routes
+app.use('/api/tokens', tokenRoutes);
 
 // 404 Handler
 app.use((req, res) => {

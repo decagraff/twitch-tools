@@ -308,16 +308,16 @@ export const Dashboard: React.FC = () => {
                 </Button>
                 <Button
                   className="w-full py-4"
-                  onClick={() => navigate('/api-tester')}
+                  onClick={() => navigate('/webhooks')}
                 >
-                  Test API
+                  Manage Webhooks
                 </Button>
                 <Button
                   className="w-full py-4"
-                  onClick={() => navigate('/twitch-configs')}
+                  onClick={() => navigate('/api-tester')}
                   variant="secondary"
                 >
-                  Configure Apps
+                  Test API
                 </Button>
               </div>
             </Card>

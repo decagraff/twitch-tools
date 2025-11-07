@@ -1,0 +1,278 @@
+import { Request, Response } from 'express';
+import { validationResult } from 'express-validator';
+import prisma from '../config/database';
+import axios from 'axios';
+
+const TWITCH_EVENTSUB_URL = 'https://api.twitch.tv/helix/eventsub/subscriptions';
+
+/**
+ * Get all EventSub subscriptions for the authenticated user
+ */
+export async function getAllWebhooks(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+
+    const webhooks = await prisma.webhook.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ webhooks });
+  } catch (error: any) {
+    console.error('Get webhooks error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to retrieve webhooks',
+    });
+  }
+}
+
+/**
+ * Create a new EventSub subscription
+ */
+export async function createWebhook(req: Request, res: Response): Promise<void> {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const { tokenId, type, condition, callbackUrl } = req.body;
+
+    // Get the token to use for authentication
+    const token = await prisma.savedToken.findUnique({
+      where: { id: tokenId },
+      include: { twitchConfig: true },
+    });
+
+    if (!token) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'Token not found',
+      });
+      return;
+    }
+
+    if (token.userId !== userId) {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have permission to use this token',
+      });
+      return;
+    }
+
+    // Decrypt token
+    const { decrypt } = await import('../utils/encryption');
+    const accessToken = decrypt(token.accessToken);
+
+    // Create EventSub subscription with Twitch
+    const subscriptionData = {
+      type,
+      version: '1',
+      condition,
+      transport: {
+        method: 'webhook',
+        callback: callbackUrl,
+        secret: generateSecret(), // Generate a random secret
+      },
+    };
+
+    const response = await axios.post(TWITCH_EVENTSUB_URL, subscriptionData, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Client-Id': token.twitchConfig.clientId,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const subscription = response.data.data[0];
+
+    // Save to database
+    const webhook = await prisma.webhook.create({
+      data: {
+        userId,
+        subscriptionId: subscription.id,
+        type: subscription.type,
+        callbackUrl,
+        status: subscription.status,
+        cost: subscription.cost || 0,
+      },
+    });
+
+    res.status(201).json({
+      message: 'EventSub subscription created successfully',
+      webhook,
+    });
+  } catch (error: any) {
+    console.error('Create webhook error:', error);
+
+    if (error.response?.data) {
+      res.status(error.response.status || 500).json({
+        error: 'Twitch API error',
+        message: error.response.data.message || 'Failed to create EventSub subscription',
+        details: error.response.data,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to create webhook',
+    });
+  }
+}
+
+/**
+ * Delete an EventSub subscription
+ */
+export async function deleteWebhook(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    const webhook = await prisma.webhook.findUnique({
+      where: { id },
+    });
+
+    if (!webhook) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'Webhook not found',
+      });
+      return;
+    }
+
+    if (webhook.userId !== userId) {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have permission to delete this webhook',
+      });
+      return;
+    }
+
+    // We need a token to call Twitch API to delete the subscription
+    // Get any user token from this user
+    const token = await prisma.savedToken.findFirst({
+      where: { userId, tokenType: 'user' },
+      include: { twitchConfig: true },
+    });
+
+    if (token) {
+      try {
+        const { decrypt } = await import('../utils/encryption');
+        const accessToken = decrypt(token.accessToken);
+
+        // Delete from Twitch EventSub
+        await axios.delete(`${TWITCH_EVENTSUB_URL}?id=${webhook.subscriptionId}`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Client-Id': token.twitchConfig.clientId,
+          },
+        });
+      } catch (error: any) {
+        console.error('Failed to delete from Twitch:', error.response?.data || error.message);
+        // Continue anyway to delete from our database
+      }
+    }
+
+    // Delete from database
+    await prisma.webhook.delete({
+      where: { id },
+    });
+
+    res.json({
+      message: 'Webhook deleted successfully',
+    });
+  } catch (error: any) {
+    console.error('Delete webhook error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to delete webhook',
+    });
+  }
+}
+
+/**
+ * Get all available EventSub subscription types
+ */
+export async function getEventSubTypes(req: Request, res: Response): Promise<void> {
+  // Return common EventSub types
+  const types = [
+    {
+      type: 'stream.online',
+      version: '1',
+      description: 'A broadcaster starts a stream',
+      condition: { broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'stream.offline',
+      version: '1',
+      description: 'A broadcaster stops a stream',
+      condition: { broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'channel.update',
+      version: '2',
+      description: 'A broadcaster updates their channel properties',
+      condition: { broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'channel.follow',
+      version: '2',
+      description: 'A user follows a broadcaster',
+      condition: { broadcaster_user_id: 'required', moderator_user_id: 'required' },
+    },
+    {
+      type: 'channel.subscribe',
+      version: '1',
+      description: 'A user subscribes to a broadcaster',
+      condition: { broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'channel.subscription.gift',
+      version: '1',
+      description: 'A user gifts subscriptions',
+      condition: { broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'channel.cheer',
+      version: '1',
+      description: 'A user cheers bits',
+      condition: { broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'channel.raid',
+      version: '1',
+      description: 'A broadcaster raids another broadcaster',
+      condition: { to_broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'channel.ban',
+      version: '1',
+      description: 'A user is banned from a broadcaster\'s chat',
+      condition: { broadcaster_user_id: 'required' },
+    },
+    {
+      type: 'channel.moderator.add',
+      version: '1',
+      description: 'A user is added as a moderator',
+      condition: { broadcaster_user_id: 'required' },
+    },
+  ];
+
+  res.json({ types });
+}
+
+/**
+ * Generate a random secret for EventSub webhook verification
+ */
+function generateSecret(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let secret = '';
+  for (let i = 0; i < 32; i++) {
+    secret += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return secret;
+}

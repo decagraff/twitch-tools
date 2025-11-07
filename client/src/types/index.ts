@@ -169,6 +169,28 @@ export interface Webhook {
   createdAt: string;
 }
 
+export interface CreateWebhookRequest {
+  tokenId: string;
+  type: string;
+  condition: Record<string, string>;
+  callbackUrl: string;
+}
+
+export interface EventSubType {
+  type: string;
+  version: string;
+  description: string;
+  condition: Record<string, string>;
+}
+
+export interface WebhooksResponse {
+  webhooks: Webhook[];
+}
+
+export interface EventSubTypesResponse {
+  types: EventSubType[];
+}
+
 export interface ApiLog {
   id: string;
   tokenId: string | null;

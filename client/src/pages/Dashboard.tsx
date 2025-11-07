@@ -83,12 +83,15 @@ export const Dashboard: React.FC = () => {
             <Button className="w-full py-4" disabled>
               Manage Webhooks
             </Button>
-            <Button className="w-full py-4" disabled>
-              Add Configuration
+            <Button
+              className="w-full py-4"
+              onClick={() => navigate('/twitch-configs')}
+            >
+              Manage Configurations
             </Button>
           </div>
           <p className="text-gray-400 text-sm mt-4 text-center">
-            Features coming in next phases...
+            More features coming in next phases...
           </p>
         </div>
       </main>

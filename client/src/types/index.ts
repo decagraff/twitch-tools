@@ -42,9 +42,31 @@ export interface ApiError {
 export interface TwitchConfig {
   id: string;
   clientId: string;
+  clientSecret: string;
   name: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateTwitchConfigRequest {
+  clientId: string;
+  clientSecret: string;
+  name?: string;
+}
+
+export interface UpdateTwitchConfigRequest {
+  clientId?: string;
+  clientSecret?: string;
+  name?: string;
+}
+
+export interface TwitchConfigsResponse {
+  configs: TwitchConfig[];
+}
+
+export interface TwitchConfigResponse {
+  config: TwitchConfig;
+  message?: string;
 }
 
 export interface SavedToken {

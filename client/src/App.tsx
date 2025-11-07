@@ -8,6 +8,7 @@ import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
+import { TwitchConfigs } from './pages/TwitchConfigs';
 
 // Components
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -49,6 +50,7 @@ function App() {
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/twitch-configs" element={<TwitchConfigs />} />
         </Route>
 
         {/* Redirect unknown routes to landing */}

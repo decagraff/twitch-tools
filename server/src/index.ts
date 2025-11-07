@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import twitchConfigRoutes from './routes/twitchConfigRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -36,7 +37,7 @@ app.get('/api', (req, res) => {
     message: 'Twitch Tools API v1.0',
     endpoints: {
       auth: '/api/auth',
-      users: '/api/users',
+      twitchConfigs: '/api/twitch-configs',
       tokens: '/api/tokens',
       webhooks: '/api/webhooks'
     }
@@ -45,6 +46,9 @@ app.get('/api', (req, res) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Twitch Config routes
+app.use('/api/twitch-configs', twitchConfigRoutes);
 
 // 404 Handler
 app.use((req, res) => {

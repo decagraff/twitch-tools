@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../components/Card';
@@ -8,7 +8,13 @@ import { Logo } from '../components/Logo';
 import { useAuthStore } from '../store/authStore';
 import tokenService from '../services/tokenService';
 import twitchConfigService from '../services/twitchConfigService';
-import type { SavedToken, TwitchConfig, GenerateAppTokenRequest } from '../types/index';
+import type {
+  SavedToken,
+  TwitchConfig,
+  GenerateAppTokenRequest,
+  StartUserTokenRequest,
+  DeviceFlowResponse,
+} from '../types/index';
 
 export const Tokens: React.FC = () => {
   const navigate = useNavigate();
@@ -17,11 +23,21 @@ export const Tokens: React.FC = () => {
   const [configs, setConfigs] = useState<TwitchConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showUserTokenModal, setShowUserTokenModal] = useState(false);
+  const [showDeviceFlowModal, setShowDeviceFlowModal] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [selectedToken, setSelectedToken] = useState<SavedToken | null>(null);
+  const [deviceFlowData, setDeviceFlowData] = useState<DeviceFlowResponse | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [formData, setFormData] = useState({
     twitchConfigId: '',
     name: '',
+  });
+  const [userTokenFormData, setUserTokenFormData] = useState({
+    twitchConfigId: '',
+    name: '',
+    scopes: [] as string[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -149,6 +165,131 @@ export const Tokens: React.FC = () => {
     }
   };
 
+  // User Token Functions
+  const handleOpenUserTokenModal = () => {
+    if (configs.length === 0) {
+      toast.error('Please create a Twitch configuration first');
+      navigate('/twitch-configs');
+      return;
+    }
+    setUserTokenFormData({
+      twitchConfigId: configs[0]?.id || '',
+      name: '',
+      scopes: [],
+    });
+    setShowUserTokenModal(true);
+  };
+
+  const handleToggleScope = (scope: string) => {
+    setUserTokenFormData((prev) => ({
+      ...prev,
+      scopes: prev.scopes.includes(scope)
+        ? prev.scopes.filter((s) => s !== scope)
+        : [...prev.scopes, scope],
+    }));
+  };
+
+  const handleStartUserToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!userTokenFormData.twitchConfigId) {
+      toast.error('Please select a configuration');
+      return;
+    }
+
+    if (userTokenFormData.scopes.length === 0) {
+      toast.error('Please select at least one scope');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const requestData: StartUserTokenRequest = {
+        twitchConfigId: userTokenFormData.twitchConfigId,
+        scopes: userTokenFormData.scopes,
+        name: userTokenFormData.name.trim() || undefined,
+      };
+
+      const flowData = await tokenService.startUserToken(requestData);
+      setDeviceFlowData(flowData);
+      setShowUserTokenModal(false);
+      setShowDeviceFlowModal(true);
+
+      // Start polling
+      startPolling(flowData.deviceCode, flowData.interval);
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to start user token flow';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startPolling = (deviceCode: string, interval: number) => {
+    setIsPolling(true);
+
+    const poll = async () => {
+      try {
+        const result = await tokenService.pollUserToken({
+          twitchConfigId: userTokenFormData.twitchConfigId,
+          deviceCode,
+          name: userTokenFormData.name.trim() || undefined,
+        });
+
+        if (result.status === 'success' && result.token) {
+          stopPolling();
+          setShowDeviceFlowModal(false);
+          toast.success('User access token generated successfully!');
+          loadTokens();
+
+          // Show the token
+          setSelectedToken(result.token);
+          setShowTokenModal(true);
+        } else if (result.status === 'denied') {
+          stopPolling();
+          setShowDeviceFlowModal(false);
+          toast.error('Authorization was denied');
+        } else if (result.status === 'expired') {
+          stopPolling();
+          setShowDeviceFlowModal(false);
+          toast.error('Authorization code expired. Please try again.');
+        }
+        // If 'pending', continue polling
+      } catch (error: any) {
+        stopPolling();
+        setShowDeviceFlowModal(false);
+        const message = error.response?.data?.message || 'Failed to complete authorization';
+        toast.error(message);
+      }
+    };
+
+    // Poll immediately, then at intervals
+    poll();
+    pollingIntervalRef.current = setInterval(poll, interval * 1000);
+  };
+
+  const stopPolling = () => {
+    setIsPolling(false);
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
+  const handleCancelDeviceFlow = () => {
+    stopPolling();
+    setShowDeviceFlowModal(false);
+    setDeviceFlowData(null);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, []);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -218,10 +359,16 @@ export const Tokens: React.FC = () => {
             <h1 className="text-3xl font-bold text-white mb-2">Token Manager</h1>
             <p className="text-white/60">Generate and manage your Twitch API tokens</p>
           </div>
-          <Button onClick={handleOpenGenerateModal}>
-            <span className="text-xl mr-2">+</span>
-            Generate App Token
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={handleOpenGenerateModal} variant="secondary">
+              <span className="text-xl mr-2">+</span>
+              App Token
+            </Button>
+            <Button onClick={handleOpenUserTokenModal}>
+              <span className="text-xl mr-2">+</span>
+              User Token
+            </Button>
+          </div>
         </div>
 
         {/* Loading State */}
@@ -396,6 +543,160 @@ export const Tokens: React.FC = () => {
         </div>
       )}
 
+      {/* User Token Scopes Modal */}
+      {showUserTokenModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Generate User Access Token
+            </h2>
+            <form onSubmit={handleStartUserToken} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  Twitch Configuration *
+                </label>
+                <select
+                  value={userTokenFormData.twitchConfigId}
+                  onChange={(e) =>
+                    setUserTokenFormData({
+                      ...userTokenFormData,
+                      twitchConfigId: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full px-4 py-2 bg-twitch-dark-light border border-twitch-gray-dark text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-twitch-purple"
+                >
+                  {configs.map((config) => (
+                    <option key={config.id} value={config.id}>
+                      {config.name || config.clientId}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  Name (Optional)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="My User Token"
+                  value={userTokenFormData.name}
+                  onChange={(e) =>
+                    setUserTokenFormData({
+                      ...userTokenFormData,
+                      name: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  Scopes * (Select at least one)
+                </label>
+                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 bg-twitch-dark border border-twitch-gray-dark rounded-lg">
+                  {['analytics:read:extensions', 'analytics:read:games', 'bits:read', 'channel:edit:commercial', 'channel:manage:broadcast', 'channel:manage:extensions', 'channel:manage:moderators', 'channel:manage:polls', 'channel:manage:predictions', 'channel:manage:redemptions', 'channel:manage:schedule', 'channel:manage:videos', 'channel:read:charity', 'channel:read:editors', 'channel:read:goals', 'channel:read:hype_train', 'channel:read:polls', 'channel:read:predictions', 'channel:read:redemptions', 'channel:read:stream_key', 'channel:read:subscriptions', 'clips:edit', 'moderation:read', 'moderator:manage:announcements', 'moderator:manage:automod', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:manage:chat_settings', 'moderator:read:chatters', 'user:edit', 'user:edit:broadcast', 'user:edit:follows', 'user:manage:blocked_users', 'user:read:blocked_users', 'user:read:broadcast', 'user:read:email', 'user:read:follows', 'user:read:subscriptions', 'chat:edit', 'chat:read', 'whispers:read', 'whispers:edit'].map((scope) => (
+                    <label
+                      key={scope}
+                      className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
+                        userTokenFormData.scopes.includes(scope)
+                          ? 'bg-twitch-purple/20 border border-twitch-purple'
+                          : 'bg-twitch-dark-light hover:bg-white/5'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={userTokenFormData.scopes.includes(scope)}
+                        onChange={() => handleToggleScope(scope)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-white">{scope}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-white/40 mt-2">
+                  Selected: {userTokenFormData.scopes.length} scopes
+                </p>
+              </div>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <p className="text-sm text-blue-400">
+                  <strong>OAuth Device Flow:</strong> After clicking continue, you'll be
+                  shown a code to authorize on Twitch. This allows users to grant access
+                  to their account data.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button type="submit" disabled={isSubmitting} className="flex-1">
+                  {isSubmitting ? 'Starting...' : 'Continue'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setShowUserTokenModal(false)}
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Device Flow Authorization Modal */}
+      {showDeviceFlowModal && deviceFlowData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="max-w-lg w-full">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Authorize on Twitch
+            </h2>
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-white/80 mb-4">
+                  Visit this URL on any device to authorize:
+                </p>
+                <a
+                  href={deviceFlowData.verificationUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-6 py-3 bg-twitch-purple hover:bg-twitch-purple-dark text-white font-semibold rounded-lg transition-colors"
+                >
+                  Open Twitch Authorization
+                </a>
+              </div>
+              <div className="text-center">
+                <p className="text-white/60 text-sm mb-2">Enter this code:</p>
+                <div className="inline-block px-8 py-4 bg-twitch-dark border-2 border-twitch-purple rounded-lg">
+                  <code className="text-4xl font-bold text-white tracking-wider">
+                    {deviceFlowData.userCode}
+                  </code>
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-white/60">
+                {isPolling && (
+                  <>
+                    <div className="w-4 h-4 border-2 border-twitch-purple border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm">Waiting for authorization...</span>
+                  </>
+                )}
+              </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                <p className="text-sm text-yellow-400">
+                  <strong>Note:</strong> This code expires in{' '}
+                  {Math.floor(deviceFlowData.expiresIn / 60)} minutes. Keep this window
+                  open while you authorize on Twitch.
+                </p>
+              </div>
+              <button
+                onClick={handleCancelDeviceFlow}
+                className="w-full px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* View Token Modal */}
       {showTokenModal && selectedToken && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -442,6 +743,14 @@ export const Tokens: React.FC = () => {
                   </p>
                 </div>
               </div>
+              {selectedToken.channelLogin && (
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-1">
+                    Authorized User
+                  </label>
+                  <p className="text-white">{selectedToken.channelLogin}</p>
+                </div>
+              )}
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
                 <p className="text-sm text-yellow-400">
                   <strong>Security Warning:</strong> Keep this token secure and never

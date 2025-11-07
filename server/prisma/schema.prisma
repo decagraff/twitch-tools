@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hashed password
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  twitchConfigs TwitchConfig[]
+  savedTokens   SavedToken[]
+  webhooks      Webhook[]
+
+  @@map("users")
+}
+
+// Twitch Client Configuration (Client ID & Secret)
+model TwitchConfig {
+  id           String   @id @default(uuid())
+  userId       String
+  clientId     String
+  clientSecret String   // Encrypted
+  name         String?  // Optional name for multiple configs
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("twitch_configs")
+}
+
+// Saved Tokens (User Access & App Access)
+model SavedToken {
+  id          String   @id @default(uuid())
+  userId      String
+  tokenType   String   // "user" or "app"
+  accessToken String   // Encrypted
+  scopes      String[] // Array of scopes
+  channelId   String?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_tokens")
+}
+
+// EventSub Webhooks
+model Webhook {
+  id               String   @id @default(uuid())
+  userId           String
+  subscriptionId   String   @unique // From Twitch EventSub
+  type             String   // EventSub subscription type
+  callbackUrl      String
+  status           String   // enabled, webhook_callback_verification_pending, etc.
+  cost             Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("webhooks")
+}

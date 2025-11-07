@@ -40,6 +40,8 @@ model TwitchConfig {
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Ensure a user cannot have duplicate clientIds
+  @@unique([userId, clientId])
   @@map("twitch_configs")
 }
 

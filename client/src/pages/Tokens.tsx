@@ -189,6 +189,46 @@ export const Tokens: React.FC = () => {
     }));
   };
 
+  const handleSelectAllScopes = () => {
+    const allScopes = [
+      'analytics:read:extensions', 'analytics:read:games', 'bits:read',
+      'channel:bot', 'channel:manage:ads', 'channel:read:ads',
+      'channel:manage:broadcast', 'channel:read:charity', 'channel:edit:commercial',
+      'channel:read:editors', 'channel:manage:extensions', 'channel:read:goals',
+      'channel:read:guest_star', 'channel:manage:guest_star', 'channel:read:hype_train',
+      'channel:manage:moderators', 'channel:moderate', 'channel:read:polls',
+      'channel:manage:polls', 'channel:read:predictions', 'channel:manage:predictions',
+      'channel:manage:raids', 'channel:read:redemptions', 'channel:manage:redemptions',
+      'channel:manage:schedule', 'channel:read:stream_key', 'channel:read:subscriptions',
+      'channel:manage:videos', 'channel:read:vips', 'channel:manage:vips',
+      'clips:edit', 'moderation:read', 'moderator:manage:announcements',
+      'moderator:manage:automod', 'moderator:read:automod_settings',
+      'moderator:manage:automod_settings', 'moderator:read:banned_users',
+      'moderator:manage:banned_users', 'moderator:read:blocked_terms',
+      'moderator:manage:blocked_terms', 'moderator:read:chat_messages',
+      'moderator:manage:chat_messages', 'moderator:read:chat_settings',
+      'moderator:manage:chat_settings', 'moderator:read:chatters',
+      'moderator:read:followers', 'moderator:read:guest_star',
+      'moderator:manage:guest_star', 'moderator:read:moderators',
+      'moderator:read:shield_mode', 'moderator:manage:shield_mode',
+      'moderator:read:shoutouts', 'moderator:manage:shoutouts',
+      'moderator:read:suspicious_users', 'moderator:read:unban_requests',
+      'moderator:manage:unban_requests', 'moderator:read:vips',
+      'moderator:read:warnings', 'moderator:manage:warnings',
+      'user:bot', 'user:edit', 'user:edit:broadcast',
+      'user:read:blocked_users', 'user:manage:blocked_users', 'user:read:broadcast',
+      'user:read:chat', 'user:manage:chat_color', 'user:read:email',
+      'user:read:emotes', 'user:read:follows', 'user:read:moderated_channels',
+      'user:read:subscriptions', 'user:read:whispers', 'user:manage:whispers',
+      'user:write:chat', 'chat:read', 'chat:edit', 'whispers:read'
+    ];
+    setUserTokenFormData((prev) => ({ ...prev, scopes: allScopes }));
+  };
+
+  const handleDeselectAllScopes = () => {
+    setUserTokenFormData((prev) => ({ ...prev, scopes: [] }));
+  };
+
   const handleStartUserToken = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -590,11 +630,29 @@ export const Tokens: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">
-                  Scopes * (Select at least one)
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-white/80">
+                    Scopes * (Select at least one)
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllScopes}
+                      className="px-3 py-1 text-xs bg-twitch-purple hover:bg-twitch-purple-dark text-white rounded transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllScopes}
+                      className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 bg-twitch-dark border border-twitch-gray-dark rounded-lg">
-                  {['analytics:read:extensions', 'analytics:read:games', 'bits:read', 'channel:edit:commercial', 'channel:manage:broadcast', 'channel:manage:extensions', 'channel:manage:moderators', 'channel:manage:polls', 'channel:manage:predictions', 'channel:manage:redemptions', 'channel:manage:schedule', 'channel:manage:videos', 'channel:read:charity', 'channel:read:editors', 'channel:read:goals', 'channel:read:hype_train', 'channel:read:polls', 'channel:read:predictions', 'channel:read:redemptions', 'channel:read:stream_key', 'channel:read:subscriptions', 'clips:edit', 'moderation:read', 'moderator:manage:announcements', 'moderator:manage:automod', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:manage:chat_settings', 'moderator:read:chatters', 'user:edit', 'user:edit:broadcast', 'user:edit:follows', 'user:manage:blocked_users', 'user:read:blocked_users', 'user:read:broadcast', 'user:read:email', 'user:read:follows', 'user:read:subscriptions', 'chat:edit', 'chat:read', 'whispers:read', 'whispers:edit'].map((scope) => (
+                  {['analytics:read:extensions', 'analytics:read:games', 'bits:read', 'channel:bot', 'channel:manage:ads', 'channel:read:ads', 'channel:manage:broadcast', 'channel:read:charity', 'channel:edit:commercial', 'channel:read:editors', 'channel:manage:extensions', 'channel:read:goals', 'channel:read:guest_star', 'channel:manage:guest_star', 'channel:read:hype_train', 'channel:manage:moderators', 'channel:moderate', 'channel:read:polls', 'channel:manage:polls', 'channel:read:predictions', 'channel:manage:predictions', 'channel:manage:raids', 'channel:read:redemptions', 'channel:manage:redemptions', 'channel:manage:schedule', 'channel:read:stream_key', 'channel:read:subscriptions', 'channel:manage:videos', 'channel:read:vips', 'channel:manage:vips', 'clips:edit', 'moderation:read', 'moderator:manage:announcements', 'moderator:manage:automod', 'moderator:read:automod_settings', 'moderator:manage:automod_settings', 'moderator:read:banned_users', 'moderator:manage:banned_users', 'moderator:read:blocked_terms', 'moderator:manage:blocked_terms', 'moderator:read:chat_messages', 'moderator:manage:chat_messages', 'moderator:read:chat_settings', 'moderator:manage:chat_settings', 'moderator:read:chatters', 'moderator:read:followers', 'moderator:read:guest_star', 'moderator:manage:guest_star', 'moderator:read:moderators', 'moderator:read:shield_mode', 'moderator:manage:shield_mode', 'moderator:read:shoutouts', 'moderator:manage:shoutouts', 'moderator:read:suspicious_users', 'moderator:read:unban_requests', 'moderator:manage:unban_requests', 'moderator:read:vips', 'moderator:read:warnings', 'moderator:manage:warnings', 'user:bot', 'user:edit', 'user:edit:broadcast', 'user:read:blocked_users', 'user:manage:blocked_users', 'user:read:broadcast', 'user:read:chat', 'user:manage:chat_color', 'user:read:email', 'user:read:emotes', 'user:read:follows', 'user:read:moderated_channels', 'user:read:subscriptions', 'user:read:whispers', 'user:manage:whispers', 'user:write:chat', 'chat:read', 'chat:edit', 'whispers:read'].map((scope) => (
                     <label
                       key={scope}
                       className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
@@ -651,24 +709,33 @@ export const Tokens: React.FC = () => {
             </h2>
             <div className="space-y-6">
               <div className="text-center">
-                <p className="text-white/80 mb-4">
-                  Visit this URL on any device to authorize:
-                </p>
-                <a
-                  href={deviceFlowData.verificationUri}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block px-6 py-3 bg-twitch-purple hover:bg-twitch-purple-dark text-white font-semibold rounded-lg transition-colors"
-                >
-                  Open Twitch Authorization
-                </a>
-              </div>
-              <div className="text-center">
                 <p className="text-white/60 text-sm mb-2">Enter this code:</p>
                 <div className="inline-block px-8 py-4 bg-twitch-dark border-2 border-twitch-purple rounded-lg">
                   <code className="text-4xl font-bold text-white tracking-wider">
                     {deviceFlowData.userCode}
                   </code>
+                </div>
+              </div>
+              <div>
+                <p className="text-white/80 mb-2 text-center">
+                  Copy and visit this URL to authorize:
+                </p>
+                <div className="flex gap-2">
+                  <div className="flex-1 px-4 py-3 bg-twitch-dark border border-twitch-gray-dark rounded-lg">
+                    <code className="text-white text-sm break-all">
+                      {deviceFlowData.verificationUri}
+                    </code>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(deviceFlowData.verificationUri);
+                      toast.success('URL copied to clipboard!');
+                    }}
+                    className="px-4 py-2 bg-twitch-purple hover:bg-twitch-purple-dark text-white rounded-lg transition-colors"
+                  >
+                    Copy URL
+                  </button>
                 </div>
               </div>
               <div className="flex items-center justify-center gap-2 text-white/60">

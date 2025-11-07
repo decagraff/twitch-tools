@@ -149,7 +149,9 @@ export async function pollDeviceToken(
     return {
       accessToken: response.data.access_token,
       expiresIn: response.data.expires_in,
-      scopes: response.data.scope ? response.data.scope.split(' ') : [],
+      scopes: Array.isArray(response.data.scope)
+        ? response.data.scope
+        : (response.data.scope ? response.data.scope.split(' ') : []),
     };
   } catch (error: any) {
     // These errors are expected during polling

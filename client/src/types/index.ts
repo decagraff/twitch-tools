@@ -1,4 +1,3 @@
-// User types
 export interface User {
   id: string;
   email: string;
@@ -7,7 +6,6 @@ export interface User {
   updatedAt?: string;
 }
 
-// Auth types
 export interface LoginRequest {
   email: string;
   password: string;
@@ -34,7 +32,6 @@ export interface RefreshTokenResponse {
   refreshToken: string;
 }
 
-// API Error
 export interface ApiError {
   error: string;
   message: string;
@@ -42,7 +39,6 @@ export interface ApiError {
   stack?: string;
 }
 
-// Twitch Config types (para más adelante)
 export interface TwitchConfig {
   id: string;
   clientId: string;
@@ -51,7 +47,6 @@ export interface TwitchConfig {
   updatedAt: string;
 }
 
-// Token types (para más adelante)
 export interface SavedToken {
   id: string;
   tokenType: 'user' | 'app';
@@ -61,7 +56,6 @@ export interface SavedToken {
   createdAt: string;
 }
 
-// Webhook types (para más adelante)
 export interface Webhook {
   id: string;
   subscriptionId: string;

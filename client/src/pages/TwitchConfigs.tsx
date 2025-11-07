@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { Logo } from '../components/Logo';
+import { useAuthStore } from '../store/authStore';
 import twitchConfigService from '../services/twitchConfigService';
 import type { TwitchConfig, CreateTwitchConfigRequest } from '../types/index';
 
 export const TwitchConfigs: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
   const [configs, setConfigs] = useState<TwitchConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -17,6 +22,11 @@ export const TwitchConfigs: React.FC = () => {
     name: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   // Load configs on mount
   useEffect(() => {
@@ -140,9 +150,34 @@ export const TwitchConfigs: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-twitch-dark py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-twitch-dark">
+      {/* Header */}
+      <header className="bg-twitch-dark-light border-b border-twitch-gray-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <Logo />
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Dashboard
+              </button>
+              <span className="text-gray-600">|</span>
+              <span className="text-gray-300">
+                {user?.name || user?.email}
+              </span>
+              <Button variant="secondary" onClick={handleLogout}>
+                Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Page Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">
@@ -228,84 +263,84 @@ export const TwitchConfigs: React.FC = () => {
             ))}
           </div>
         )}
-
-        {/* Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <Card className="max-w-lg w-full">
-              <h2 className="text-2xl font-bold text-white mb-6">
-                {editingConfig ? 'Edit Configuration' : 'Add Configuration'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">
-                    Name (Optional)
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="My Twitch App"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">
-                    Client ID *
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="your_client_id_here"
-                    value={formData.clientId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, clientId: e.target.value })
-                    }
-                    required
-                  />
-                  <p className="text-xs text-white/40 mt-1">
-                    30-31 characters, lowercase letters and numbers only
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">
-                    Client Secret *
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="your_client_secret_here"
-                    value={formData.clientSecret}
-                    onChange={(e) =>
-                      setFormData({ ...formData, clientSecret: e.target.value })
-                    }
-                    required
-                  />
-                  <p className="text-xs text-white/40 mt-1">
-                    30 characters, lowercase letters and numbers only
-                  </p>
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit" disabled={isSubmitting} className="flex-1">
-                    {isSubmitting
-                      ? 'Saving...'
-                      : editingConfig
-                      ? 'Update Configuration'
-                      : 'Create Configuration'}
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    disabled={isSubmitting}
-                    className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </Card>
-          </div>
-        )}
       </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="max-w-lg w-full">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              {editingConfig ? 'Edit Configuration' : 'Add Configuration'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  Name (Optional)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="My Twitch App"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  Client ID *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="your_client_id_here"
+                  value={formData.clientId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, clientId: e.target.value })
+                  }
+                  required
+                />
+                <p className="text-xs text-white/40 mt-1">
+                  30-31 characters, lowercase letters and numbers only
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  Client Secret *
+                </label>
+                <Input
+                  type="password"
+                  placeholder="your_client_secret_here"
+                  value={formData.clientSecret}
+                  onChange={(e) =>
+                    setFormData({ ...formData, clientSecret: e.target.value })
+                  }
+                  required
+                />
+                <p className="text-xs text-white/40 mt-1">
+                  30 characters, lowercase letters and numbers only
+                </p>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button type="submit" disabled={isSubmitting} className="flex-1">
+                  {isSubmitting
+                    ? 'Saving...'
+                    : editingConfig
+                    ? 'Update Configuration'
+                    : 'Create Configuration'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

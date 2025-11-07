@@ -73,6 +73,7 @@ export interface SavedToken {
   id: string;
   tokenType: 'user' | 'app';
   accessToken?: string; // Only present when fetching a specific token
+  refreshToken?: string; // Only present for user tokens when fetching a specific token
   scopes: string[];
   channelLogin: string | null;
   channelId: string | null;

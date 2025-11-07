@@ -29,7 +29,7 @@ export const Tokens: React.FC = () => {
   const [selectedToken, setSelectedToken] = useState<SavedToken | null>(null);
   const [deviceFlowData, setDeviceFlowData] = useState<DeviceFlowResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
   const [formData, setFormData] = useState({
     twitchConfigId: '',
     name: '',
@@ -41,6 +41,7 @@ export const Tokens: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['Analytics', 'Channel', 'Moderator', 'User', 'Chat']);
+  const [expandedTokens, setExpandedTokens] = useState<string[]>([]); // Para controlar qué tokens muestran detalles
 
   const handleLogout = () => {
     logout();
@@ -143,6 +144,21 @@ export const Tokens: React.FC = () => {
       navigator.clipboard.writeText(selectedToken.accessToken);
       toast.success('Token copied to clipboard!');
     }
+  };
+
+  const handleCopyRefreshToken = () => {
+    if (selectedToken?.refreshToken) {
+      navigator.clipboard.writeText(selectedToken.refreshToken);
+      toast.success('Refresh token copied to clipboard!');
+    }
+  };
+
+  const toggleTokenExpansion = (tokenId: string) => {
+    setExpandedTokens((prev) =>
+      prev.includes(tokenId)
+        ? prev.filter((id) => id !== tokenId)
+        : [...prev, tokenId]
+    );
   };
 
   const handleDelete = async (token: SavedToken) => {
@@ -501,7 +517,9 @@ export const Tokens: React.FC = () => {
         ) : (
           /* Tokens List */
           <div className="grid gap-4">
-            {tokens.map((token) => (
+            {tokens.map((token) => {
+              const isExpanded = expandedTokens.includes(token.id);
+              return (
               <Card
                 key={token.id}
                 className="hover:border-twitch-purple/50 transition-colors"
@@ -509,6 +527,22 @@ export const Tokens: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
+                      <button
+                        onClick={() => toggleTokenExpansion(token.id)}
+                        className="text-white/60 hover:text-white transition-colors"
+                        title={isExpanded ? "Hide details" : "Show details"}
+                      >
+                        <svg
+                          className={`w-5 h-5 transition-transform ${
+                            isExpanded ? 'rotate-90' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
                       <h3 className="text-xl font-semibold text-white">
                         {token.name || `${token.tokenType.toUpperCase()} Token`}
                       </h3>
@@ -534,26 +568,30 @@ export const Tokens: React.FC = () => {
                           {token.twitchConfig.name || token.twitchConfig.clientId}
                         </span>
                       </div>
-                      {token.channelLogin && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-white/60">Channel:</span>
-                          <span className="text-white">{token.channelLogin}</span>
-                        </div>
-                      )}
-                      {token.scopes.length > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-white/60">Scopes:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {token.scopes.map((scope) => (
-                              <span
-                                key={scope}
-                                className="px-2 py-0.5 bg-twitch-dark-light text-white/80 text-xs rounded"
-                              >
-                                {scope}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+                      {isExpanded && (
+                        <>
+                          {token.channelLogin && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-white/60">Channel:</span>
+                              <span className="text-white">{token.channelLogin}</span>
+                            </div>
+                          )}
+                          {token.scopes.length > 0 && (
+                            <div className="flex items-start gap-2 text-sm">
+                              <span className="text-white/60 pt-1">Scopes ({token.scopes.length}):</span>
+                              <div className="flex flex-wrap gap-1 flex-1">
+                                {token.scopes.map((scope) => (
+                                  <span
+                                    key={scope}
+                                    className="px-2 py-0.5 bg-twitch-dark-light text-white/80 text-xs rounded"
+                                  >
+                                    {scope}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                       <div className="flex items-center gap-4 text-xs text-white/40 mt-3">
                         <span>Created: {formatDate(token.createdAt)}</span>
@@ -588,7 +626,7 @@ export const Tokens: React.FC = () => {
                   </div>
                 </div>
               </Card>
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -894,9 +932,9 @@ export const Tokens: React.FC = () => {
       {/* View Token Modal */}
       {showTokenModal && selectedToken && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <Card className="max-w-2xl w-full">
+          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-white">Access Token</h2>
+              <h2 className="text-2xl font-bold text-white">Token Details</h2>
               <button
                 onClick={() => setShowTokenModal(false)}
                 className="text-white/60 hover:text-white text-2xl"
@@ -907,10 +945,10 @@ export const Tokens: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Token
+                  Access Token
                 </label>
                 <div className="relative">
-                  <code className="block w-full px-4 py-3 bg-twitch-dark border border-twitch-gray-dark text-white rounded-lg break-all text-sm font-mono">
+                  <code className="block w-full px-4 py-3 pr-20 bg-twitch-dark border border-twitch-gray-dark text-white rounded-lg break-all text-sm font-mono">
                     {selectedToken.accessToken}
                   </code>
                   <Button
@@ -921,6 +959,27 @@ export const Tokens: React.FC = () => {
                   </Button>
                 </div>
               </div>
+              {selectedToken.refreshToken && (
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Refresh Token
+                  </label>
+                  <div className="relative">
+                    <code className="block w-full px-4 py-3 pr-20 bg-twitch-dark border border-twitch-gray-dark text-white rounded-lg break-all text-sm font-mono">
+                      {selectedToken.refreshToken}
+                    </code>
+                    <Button
+                      onClick={handleCopyRefreshToken}
+                      className="absolute top-2 right-2"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">
+                    Use this token to refresh the access token when it expires
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-white/80 mb-1">
@@ -945,11 +1004,28 @@ export const Tokens: React.FC = () => {
                   <p className="text-white">{selectedToken.channelLogin}</p>
                 </div>
               )}
+              {selectedToken.scopes && selectedToken.scopes.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Scopes ({selectedToken.scopes.length})
+                  </label>
+                  <div className="flex flex-wrap gap-1 bg-twitch-dark border border-twitch-gray-dark rounded-lg p-3 max-h-48 overflow-y-auto">
+                    {selectedToken.scopes.map((scope) => (
+                      <span
+                        key={scope}
+                        className="px-2 py-1 bg-twitch-dark-light text-white/80 text-xs rounded"
+                      >
+                        {scope}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
                 <p className="text-sm text-yellow-400">
-                  <strong>Security Warning:</strong> Keep this token secure and never
-                  share it publicly. Anyone with this token can make API requests on
-                  behalf of your application.
+                  <strong>Security Warning:</strong> Keep these tokens secure and never
+                  share them publicly. Anyone with these tokens can make API requests on
+                  behalf of your application{selectedToken.tokenType === 'user' ? ' or user' : ''}.
                 </p>
               </div>
             </div>

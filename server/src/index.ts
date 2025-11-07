@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import authRoutes from './routes/authRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -29,7 +30,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes - Will be added later
+// API Routes
 app.get('/api', (req, res) => {
   res.json({
     message: 'Twitch Tools API v1.0',
@@ -41,6 +42,9 @@ app.get('/api', (req, res) => {
     }
   });
 });
+
+// Auth routes
+app.use('/api/auth', authRoutes);
 
 // 404 Handler
 app.use((req, res) => {

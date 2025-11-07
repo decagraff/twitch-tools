@@ -813,55 +813,73 @@ export const Tokens: React.FC = () => {
       {showDeviceFlowModal && deviceFlowData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <Card className="max-w-lg w-full">
-            <h2 className="text-2xl font-bold text-white mb-6">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
               Authorize on Twitch
             </h2>
             <div className="space-y-6">
+              {/* Step 1: Authorization Code */}
               <div className="text-center">
-                <p className="text-white/60 text-sm mb-2">Enter this code:</p>
-                <div className="inline-block px-8 py-4 bg-twitch-dark border-2 border-twitch-purple rounded-lg">
+                <p className="text-white/80 text-sm mb-2">
+                  <span className="inline-block w-6 h-6 bg-twitch-purple text-white rounded-full text-xs leading-6 mr-2">1</span>
+                  Your authorization code:
+                </p>
+                <div className="inline-block px-8 py-4 bg-twitch-dark border-2 border-twitch-purple rounded-lg mb-3">
                   <code className="text-4xl font-bold text-white tracking-wider">
                     {deviceFlowData.userCode}
                   </code>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(deviceFlowData.userCode);
+                    toast.success('Code copied to clipboard!');
+                  }}
+                  className="text-xs text-twitch-purple hover:text-twitch-purple-dark transition-colors"
+                >
+                  📋 Copy code
+                </button>
               </div>
-              <div>
-                <p className="text-white/80 mb-2 text-center">
-                  Copy and visit this URL to authorize:
+
+              {/* Step 2: Open Twitch Button */}
+              <div className="text-center">
+                <p className="text-white/80 text-sm mb-3">
+                  <span className="inline-block w-6 h-6 bg-twitch-purple text-white rounded-full text-xs leading-6 mr-2">2</span>
+                  Click the button below to authorize:
                 </p>
-                <div className="flex gap-2">
-                  <div className="flex-1 px-4 py-3 bg-twitch-dark border border-twitch-gray-dark rounded-lg">
-                    <code className="text-white text-sm break-all">
-                      {deviceFlowData.verificationUri}
-                    </code>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(deviceFlowData.verificationUri);
-                      toast.success('URL copied to clipboard!');
-                    }}
-                    className="px-4 py-2 bg-twitch-purple hover:bg-twitch-purple-dark text-white rounded-lg transition-colors"
-                  >
-                    Copy URL
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(deviceFlowData.verificationUri, '_blank', 'noopener,noreferrer');
+                    toast.success('Opening Twitch authorization page...');
+                  }}
+                  className="w-full px-6 py-4 bg-twitch-purple hover:bg-twitch-purple-dark text-white font-bold text-lg rounded-lg transition-colors shadow-lg hover:shadow-twitch-purple/50"
+                >
+                  🚀 Open Twitch & Authorize
+                </button>
+                <p className="text-xs text-white/40 mt-2">
+                  Enter the code shown above when prompted
+                </p>
               </div>
-              <div className="flex items-center justify-center gap-2 text-white/60">
+
+              {/* Polling Status */}
+              <div className="flex items-center justify-center gap-2 text-white/60 min-h-[40px]">
                 {isPolling && (
                   <>
-                    <div className="w-4 h-4 border-2 border-twitch-purple border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-5 h-5 border-2 border-twitch-purple border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-sm">Waiting for authorization...</span>
                   </>
                 )}
               </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                <p className="text-sm text-yellow-400">
-                  <strong>Note:</strong> This code expires in{' '}
-                  {Math.floor(deviceFlowData.expiresIn / 60)} minutes. Keep this window
-                  open while you authorize on Twitch.
+
+              {/* Info Box */}
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <p className="text-sm text-blue-400">
+                  💡 <strong>Tip:</strong> After authorizing on Twitch, this window will automatically
+                  detect it and close. Expires in {Math.floor(deviceFlowData.expiresIn / 60)} minutes.
                 </p>
               </div>
+
+              {/* Cancel Button */}
               <button
                 onClick={handleCancelDeviceFlow}
                 className="w-full px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"

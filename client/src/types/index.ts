@@ -92,6 +92,32 @@ export interface GenerateAppTokenRequest {
   name?: string;
 }
 
+export interface StartUserTokenRequest {
+  twitchConfigId: string;
+  scopes: string[];
+  name?: string;
+}
+
+export interface DeviceFlowResponse {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+  interval: number;
+}
+
+export interface PollUserTokenRequest {
+  twitchConfigId: string;
+  deviceCode: string;
+  name?: string;
+}
+
+export interface PollUserTokenResponse {
+  status: 'pending' | 'success' | 'denied' | 'expired';
+  token?: SavedToken;
+  message?: string;
+}
+
 export interface TokensResponse {
   tokens: SavedToken[];
 }

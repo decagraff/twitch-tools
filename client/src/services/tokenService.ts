@@ -2,6 +2,10 @@ import api from './api';
 import type {
   SavedToken,
   GenerateAppTokenRequest,
+  StartUserTokenRequest,
+  DeviceFlowResponse,
+  PollUserTokenRequest,
+  PollUserTokenResponse,
   TokensResponse,
   TokenResponse,
 } from '../types/index';
@@ -33,6 +37,22 @@ const tokenService = {
   async generateAppToken(data: GenerateAppTokenRequest): Promise<SavedToken> {
     const response = await api.post<TokenResponse>('/tokens/app', data);
     return response.data.token;
+  },
+
+  /**
+   * Start User Access Token Device Flow
+   */
+  async startUserToken(data: StartUserTokenRequest): Promise<DeviceFlowResponse> {
+    const response = await api.post<DeviceFlowResponse>('/tokens/user/start', data);
+    return response.data;
+  },
+
+  /**
+   * Poll for User Access Token completion
+   */
+  async pollUserToken(data: PollUserTokenRequest): Promise<PollUserTokenResponse> {
+    const response = await api.post<PollUserTokenResponse>('/tokens/user/poll', data);
+    return response.data;
   },
 
   /**

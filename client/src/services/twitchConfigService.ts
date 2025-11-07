@@ -56,6 +56,17 @@ const twitchConfigService = {
   async deleteConfig(id: string): Promise<void> {
     await api.delete(`/twitch-configs/${id}`);
   },
+
+  /**
+   * Validate a Twitch config with Twitch API
+   */
+  async validateConfig(clientId: string, clientSecret: string): Promise<{ valid: boolean; message: string; expiresIn?: number }> {
+    const response = await api.post<{ valid: boolean; message: string; expiresIn?: number }>('/twitch-configs/validate', {
+      clientId,
+      clientSecret,
+    });
+    return response.data;
+  },
 };
 
 export default twitchConfigService;

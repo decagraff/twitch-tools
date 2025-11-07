@@ -12,6 +12,11 @@ export async function getAllConfigs(req: Request, res: Response): Promise<void> 
 
     const configs = await prisma.twitchConfig.findMany({
       where: { userId },
+      include: {
+        _count: {
+          select: { savedTokens: true },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -21,6 +26,7 @@ export async function getAllConfigs(req: Request, res: Response): Promise<void> 
       clientId: config.clientId,
       clientSecret: decrypt(config.clientSecret),
       name: config.name,
+      tokensCount: config._count.savedTokens,
       createdAt: config.createdAt.toISOString(),
       updatedAt: config.updatedAt.toISOString(),
     }));
@@ -278,6 +284,11 @@ export async function deleteConfig(req: Request, res: Response): Promise<void> {
     // Check if config exists and belongs to user
     const existingConfig = await prisma.twitchConfig.findUnique({
       where: { id },
+      include: {
+        _count: {
+          select: { savedTokens: true },
+        },
+      },
     });
 
     if (!existingConfig) {
@@ -296,6 +307,16 @@ export async function deleteConfig(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    // Check if there are tokens using this config
+    if (existingConfig._count.savedTokens > 0) {
+      res.status(400).json({
+        error: 'Bad request',
+        message: `Cannot delete configuration. There are ${existingConfig._count.savedTokens} token(s) using this configuration. Please delete the tokens first.`,
+        tokensCount: existingConfig._count.savedTokens,
+      });
+      return;
+    }
+
     // Delete the config
     await prisma.twitchConfig.delete({
       where: { id },
@@ -309,6 +330,46 @@ export async function deleteConfig(req: Request, res: Response): Promise<void> {
     res.status(500).json({
       error: 'Server error',
       message: 'Failed to delete Twitch configuration',
+    });
+  }
+}
+
+/**
+ * Validate a Twitch config with Twitch API
+ */
+export async function validateConfig(req: Request, res: Response): Promise<void> {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const { clientId, clientSecret } = req.body;
+
+    // Try to generate an app access token to validate the credentials
+    const { generateAppAccessToken } = await import('../services/twitchApiService');
+
+    try {
+      const result = await generateAppAccessToken(clientId, clientSecret);
+
+      res.json({
+        valid: true,
+        message: 'Client ID and Secret are valid',
+        expiresIn: result.expiresIn,
+      });
+    } catch (error: any) {
+      res.status(200).json({
+        valid: false,
+        message: 'Invalid Client ID or Client Secret',
+        error: error.message,
+      });
+    }
+  } catch (error: any) {
+    console.error('Validate config error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to validate configuration',
     });
   }
 }

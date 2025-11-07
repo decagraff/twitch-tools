@@ -12,6 +12,7 @@ import {
   createConfig,
   updateConfig,
   deleteConfig,
+  validateConfig,
 } from '../controllers/twitchConfigController';
 
 const router = Router();
@@ -28,6 +29,9 @@ router.get('/:id', authMiddleware, validateGetConfig, getConfig);
 
 // POST /api/twitch-configs - Create a new config
 router.post('/', authMiddleware, validateCreateConfig, createConfig);
+
+// POST /api/twitch-configs/validate - Validate Client ID and Secret
+router.post('/validate', authMiddleware, validateCreateConfig, validateConfig);
 
 // PUT /api/twitch-configs/:id - Update a config
 router.put('/:id', authMiddleware, validateUpdateConfig, updateConfig);

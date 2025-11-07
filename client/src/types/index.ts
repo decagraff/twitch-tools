@@ -44,6 +44,7 @@ export interface TwitchConfig {
   clientId: string;
   clientSecret: string;
   name: string | null;
+  tokensCount?: number;
   createdAt: string;
   updatedAt: string;
 }

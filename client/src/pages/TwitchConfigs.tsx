@@ -22,6 +22,11 @@ export const TwitchConfigs: React.FC = () => {
     name: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<{
+    valid: boolean;
+    message: string;
+  } | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -72,6 +77,35 @@ export const TwitchConfigs: React.FC = () => {
       clientSecret: '',
       name: '',
     });
+    setValidationResult(null);
+  };
+
+  const handleValidate = async () => {
+    if (!formData.clientId || !formData.clientSecret) {
+      toast.error('Please enter Client ID and Client Secret first');
+      return;
+    }
+
+    try {
+      setIsValidating(true);
+      const result = await twitchConfigService.validateConfig(
+        formData.clientId.trim(),
+        formData.clientSecret.trim()
+      );
+      setValidationResult(result);
+
+      if (result.valid) {
+        toast.success('Credentials are valid! ✓');
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to validate credentials';
+      toast.error(message);
+      setValidationResult({ valid: false, message });
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,13 +147,16 @@ export const TwitchConfigs: React.FC = () => {
   };
 
   const handleDelete = async (config: TwitchConfig) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete the configuration "${
-          config.name || config.clientId
-        }"?`
-      )
-    ) {
+    const tokenCount = config.tokensCount || 0;
+    let confirmMessage = `Are you sure you want to delete the configuration "${
+      config.name || config.clientId
+    }"?`;
+
+    if (tokenCount > 0) {
+      confirmMessage += `\n\nWarning: This configuration has ${tokenCount} active token(s). You must delete those tokens first.`;
+    }
+
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
@@ -130,7 +167,7 @@ export const TwitchConfigs: React.FC = () => {
     } catch (error: any) {
       const message =
         error.response?.data?.message || 'Failed to delete configuration';
-      toast.error(message);
+      toast.error(message, { duration: 5000 });
     }
   };
 
@@ -238,6 +275,11 @@ export const TwitchConfigs: React.FC = () => {
                       <span className="px-2 py-1 bg-twitch-purple/20 text-twitch-purple text-xs rounded-full">
                         Active
                       </span>
+                      {config.tokensCount !== undefined && config.tokensCount > 0 && (
+                        <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">
+                          {config.tokensCount} {config.tokensCount === 1 ? 'token' : 'tokens'}
+                        </span>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
@@ -308,9 +350,10 @@ export const TwitchConfigs: React.FC = () => {
                   type="text"
                   placeholder="your_client_id_here"
                   value={formData.clientId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, clientId: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, clientId: e.target.value });
+                    setValidationResult(null); // Reset validation when changing input
+                  }}
                   required
                 />
                 <p className="text-xs text-white/40 mt-1">
@@ -325,15 +368,53 @@ export const TwitchConfigs: React.FC = () => {
                   type="password"
                   placeholder="your_client_secret_here"
                   value={formData.clientSecret}
-                  onChange={(e) =>
-                    setFormData({ ...formData, clientSecret: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, clientSecret: e.target.value });
+                    setValidationResult(null); // Reset validation when changing input
+                  }}
                   required
                 />
                 <p className="text-xs text-white/40 mt-1">
                   30 characters, lowercase letters and numbers only
                 </p>
               </div>
+
+              {/* Validation Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleValidate}
+                  disabled={isValidating || !formData.clientId || !formData.clientSecret}
+                  className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {isValidating ? 'Validating...' : '✓ Validate Credentials with Twitch'}
+                </button>
+              </div>
+
+              {/* Validation Result */}
+              {validationResult && (
+                <div
+                  className={`p-3 rounded-lg ${
+                    validationResult.valid
+                      ? 'bg-green-500/20 border border-green-500/30'
+                      : 'bg-red-500/20 border border-red-500/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">
+                      {validationResult.valid ? '✓' : '✗'}
+                    </span>
+                    <span
+                      className={
+                        validationResult.valid ? 'text-green-400' : 'text-red-400'
+                      }
+                    >
+                      {validationResult.message}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4">
                 <Button type="submit" disabled={isSubmitting} className="flex-1">
                   {isSubmitting

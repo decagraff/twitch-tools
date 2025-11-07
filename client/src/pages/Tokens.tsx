@@ -26,7 +26,9 @@ export const Tokens: React.FC = () => {
   const [showUserTokenModal, setShowUserTokenModal] = useState(false);
   const [showDeviceFlowModal, setShowDeviceFlowModal] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
   const [selectedToken, setSelectedToken] = useState<SavedToken | null>(null);
+  const [validationResult, setValidationResult] = useState<any>(null);
   const [deviceFlowData, setDeviceFlowData] = useState<DeviceFlowResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
@@ -198,6 +200,24 @@ export const Tokens: React.FC = () => {
       setShowTokenModal(true);
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to refresh token';
+      toast.error(message);
+    }
+  };
+
+  const handleValidateToken = async (token: SavedToken) => {
+    try {
+      const result = await tokenService.validateToken(token.id);
+      setValidationResult(result);
+      setSelectedToken(token);
+      setShowValidationModal(true);
+
+      if (result.valid) {
+        toast.success('Token is valid!');
+      } else {
+        toast.error('Token is invalid or expired');
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to validate token';
       toast.error(message);
     }
   };
@@ -606,7 +626,14 @@ export const Tokens: React.FC = () => {
                       onClick={() => handleViewToken(token)}
                       className="px-4 py-2 bg-twitch-purple hover:bg-twitch-purple-dark text-white rounded-lg transition-colors"
                     >
-                      View Token
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleValidateToken(token)}
+                      className="px-4 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-lg transition-colors"
+                      title="Validate this token with Twitch API"
+                    >
+                      Validate
                     </button>
                     {token.tokenType === 'user' && (
                       <button
@@ -1028,6 +1055,140 @@ export const Tokens: React.FC = () => {
                   behalf of your application{selectedToken.tokenType === 'user' ? ' or user' : ''}.
                 </p>
               </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Validation Result Modal */}
+      {showValidationModal && validationResult && selectedToken && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="max-w-2xl w-full">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-white">Token Validation</h2>
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="text-white/60 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              {/* Validation Status */}
+              <div className={`p-4 rounded-lg border-2 ${
+                validationResult.valid
+                  ? 'bg-green-500/10 border-green-500/50'
+                  : 'bg-red-500/10 border-red-500/50'
+              }`}>
+                <div className="flex items-center gap-3">
+                  {validationResult.valid ? (
+                    <>
+                      <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <h3 className="text-xl font-bold text-green-400">Token is Valid</h3>
+                        <p className="text-sm text-green-300">This token is active and working correctly</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <h3 className="text-xl font-bold text-red-400">Token is Invalid</h3>
+                        <p className="text-sm text-red-300">{validationResult.message || 'This token is expired or has been revoked'}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {validationResult.valid && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-1">
+                        Token Name
+                      </label>
+                      <p className="text-white">{selectedToken.name || `${selectedToken.tokenType.toUpperCase()} Token`}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-1">
+                        Type
+                      </label>
+                      <p className="text-white">{selectedToken.tokenType.toUpperCase()}</p>
+                    </div>
+                  </div>
+
+                  {validationResult.login && (
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-1">
+                        Authorized User
+                      </label>
+                      <p className="text-white">{validationResult.login}</p>
+                    </div>
+                  )}
+
+                  {validationResult.userId && (
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-1">
+                        User ID
+                      </label>
+                      <p className="text-white font-mono">{validationResult.userId}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-1">
+                      Client ID
+                    </label>
+                    <p className="text-white font-mono text-sm">{validationResult.clientId}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-1">
+                      Expires In
+                    </label>
+                    <p className="text-white">
+                      {Math.floor(validationResult.expiresIn / 3600)} hours {Math.floor((validationResult.expiresIn % 3600) / 60)} minutes
+                    </p>
+                  </div>
+
+                  {validationResult.scopes && validationResult.scopes.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-2">
+                        Active Scopes ({validationResult.scopes.length})
+                      </label>
+                      <div className="flex flex-wrap gap-1 bg-twitch-dark border border-twitch-gray-dark rounded-lg p-3 max-h-48 overflow-y-auto">
+                        {validationResult.scopes.map((scope: string) => (
+                          <span
+                            key={scope}
+                            className="px-2 py-1 bg-twitch-dark-light text-white/80 text-xs rounded"
+                          >
+                            {scope}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <p className="text-sm text-blue-400">
+                      💡 <strong>Info:</strong> This validation was performed in real-time with Twitch's API.
+                      The token is currently active and can be used for API requests.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="w-full px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              >
+                Close
+              </button>
             </div>
           </Card>
         </div>

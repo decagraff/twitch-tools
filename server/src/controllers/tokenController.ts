@@ -621,6 +621,75 @@ export async function handleAuthorizationCallback(req: Request, res: Response): 
 }
 
 /**
+ * Validate a saved token with Twitch API
+ */
+export async function validateSavedToken(req: Request, res: Response): Promise<void> {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const { id } = req.params;
+
+    // Get the token
+    const token = await prisma.savedToken.findUnique({
+      where: { id },
+    });
+
+    if (!token) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'Token not found',
+      });
+      return;
+    }
+
+    // Ensure the token belongs to the authenticated user
+    if (token.userId !== userId) {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have permission to access this token',
+      });
+      return;
+    }
+
+    // Decrypt the access token
+    const accessToken = decrypt(token.accessToken);
+
+    // Validate with Twitch API
+    const validation = await validateToken(accessToken);
+
+    res.json({
+      valid: true,
+      clientId: validation.clientId,
+      login: validation.login,
+      userId: validation.userId,
+      scopes: validation.scopes,
+      expiresIn: validation.expiresIn,
+    });
+  } catch (error: any) {
+    console.error('Validate token error:', error);
+
+    // If validation failed, it means the token is invalid
+    if (error.message === 'Invalid or expired token') {
+      res.status(200).json({
+        valid: false,
+        message: 'Token is invalid or expired',
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Server error',
+      message: error.message || 'Failed to validate token',
+    });
+  }
+}
+
+/**
  * Refresh an existing token using its refresh token
  */
 export async function refreshToken(req: Request, res: Response): Promise<void> {

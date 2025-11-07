@@ -11,6 +11,7 @@ import type {
   StartAuthorizationFlowRequest,
   StartAuthorizationFlowResponse,
   HandleOAuthCallbackRequest,
+  ValidateTokenResponse,
 } from '../types/index';
 
 /**
@@ -87,6 +88,14 @@ const tokenService = {
   async refreshToken(tokenId: string): Promise<SavedToken> {
     const response = await api.post<TokenResponse>(`/tokens/${tokenId}/refresh`);
     return response.data.token;
+  },
+
+  /**
+   * Validate a token with Twitch API
+   */
+  async validateToken(tokenId: string): Promise<ValidateTokenResponse> {
+    const response = await api.get<ValidateTokenResponse>(`/tokens/${tokenId}/validate`);
+    return response.data;
   },
 };
 

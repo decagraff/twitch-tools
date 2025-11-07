@@ -20,6 +20,7 @@ import {
   startAuthorizationFlow,
   handleAuthorizationCallback,
   refreshToken,
+  validateSavedToken,
 } from '../controllers/tokenController';
 
 const router = Router();
@@ -51,6 +52,9 @@ router.post('/user/callback', authMiddleware, validateAuthorizationCallback, han
 
 // POST /api/tokens/:id/refresh - Refresh an existing token
 router.post('/:id/refresh', authMiddleware, validateRefreshToken, refreshToken);
+
+// GET /api/tokens/:id/validate - Validate a saved token with Twitch API
+router.get('/:id/validate', authMiddleware, validateGetToken, validateSavedToken);
 
 // DELETE /api/tokens/:id - Delete a saved token
 router.delete('/:id', authMiddleware, validateDeleteToken, deleteToken);

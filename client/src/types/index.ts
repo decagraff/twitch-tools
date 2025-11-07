@@ -149,6 +149,16 @@ export interface RefreshTokenRequest {
   tokenId: string;
 }
 
+export interface ValidateTokenResponse {
+  valid: boolean;
+  clientId?: string;
+  login?: string | null;
+  userId?: string | null;
+  scopes?: string[];
+  expiresIn?: number;
+  message?: string;
+}
+
 export interface Webhook {
   id: string;
   subscriptionId: string;

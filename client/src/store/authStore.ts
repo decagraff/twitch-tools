@@ -6,6 +6,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitialized: boolean;
   error: string | null;
 
   // Actions
@@ -20,6 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  isInitialized: false,
   error: null,
 
   /**
@@ -118,15 +120,19 @@ export const useAuthStore = create<AuthState>((set) => ({
 
         // Verify token is still valid by fetching current user
         const currentUser = await authService.getCurrentUser();
-        set({ user: currentUser });
+        set({ user: currentUser, isInitialized: true });
       } catch (error) {
         // Token is invalid, clear everything
         authService.logout();
         set({
           user: null,
           isAuthenticated: false,
+          isInitialized: true,
         });
       }
+    } else {
+      // No token found, mark as initialized
+      set({ isInitialized: true });
     }
   },
 }));

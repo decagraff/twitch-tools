@@ -77,7 +77,10 @@ export const Dashboard: React.FC = () => {
         <div className="bg-twitch-dark-light border border-twitch-gray-dark rounded-lg p-8">
           <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="w-full py-4" disabled>
+            <Button
+              className="w-full py-4"
+              onClick={() => navigate('/tokens')}
+            >
               Generate Token
             </Button>
             <Button className="w-full py-4" disabled>

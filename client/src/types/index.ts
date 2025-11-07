@@ -72,10 +72,33 @@ export interface TwitchConfigResponse {
 export interface SavedToken {
   id: string;
   tokenType: 'user' | 'app';
+  accessToken?: string; // Only present when fetching a specific token
   scopes: string[];
+  channelLogin: string | null;
   channelId: string | null;
+  name: string | null;
   expiresAt: string | null;
   createdAt: string;
+  updatedAt: string;
+  twitchConfig: {
+    id: string;
+    clientId: string;
+    name: string | null;
+  };
+}
+
+export interface GenerateAppTokenRequest {
+  twitchConfigId: string;
+  name?: string;
+}
+
+export interface TokensResponse {
+  tokens: SavedToken[];
+}
+
+export interface TokenResponse {
+  token: SavedToken;
+  message?: string;
 }
 
 export interface Webhook {

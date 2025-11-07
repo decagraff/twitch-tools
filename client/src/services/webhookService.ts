@@ -42,6 +42,33 @@ const webhookService = {
   async deleteWebhook(id: string): Promise<void> {
     await api.delete(`/webhooks/${id}`);
   },
+
+  /**
+   * Get EventSub subscriptions from Twitch API (remote)
+   */
+  async getRemoteWebhooks(): Promise<{
+    subscriptions: any[];
+    total: number;
+    max_total_cost: number;
+    total_cost: number;
+  }> {
+    const response = await api.get('/webhooks/remote');
+    return response.data;
+  },
+
+  /**
+   * Sync EventSub subscriptions from Twitch to local database
+   */
+  async syncWebhooks(): Promise<{
+    message: string;
+    imported: number;
+    updated: number;
+    removed: number;
+    total: number;
+  }> {
+    const response = await api.post('/webhooks/sync');
+    return response.data;
+  },
 };
 
 export default webhookService;

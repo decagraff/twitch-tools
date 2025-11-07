@@ -6,6 +6,8 @@ import {
   createWebhook,
   deleteWebhook,
   getEventSubTypes,
+  getRemoteWebhooks,
+  syncWebhooks,
 } from '../controllers/webhookController';
 
 const router = Router();
@@ -19,6 +21,12 @@ router.get('/', authMiddleware, getAllWebhooks);
 
 // GET /api/webhooks/types - Get available EventSub subscription types
 router.get('/types', authMiddleware, getEventSubTypes);
+
+// GET /api/webhooks/remote - Get EventSub subscriptions from Twitch API
+router.get('/remote', authMiddleware, getRemoteWebhooks);
+
+// POST /api/webhooks/sync - Sync EventSub subscriptions from Twitch to database
+router.post('/sync', authMiddleware, syncWebhooks);
 
 // POST /api/webhooks - Create a new EventSub subscription
 router.post(

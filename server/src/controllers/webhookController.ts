@@ -266,6 +266,177 @@ export async function getEventSubTypes(req: Request, res: Response): Promise<voi
 }
 
 /**
+ * Get EventSub subscriptions from Twitch API (remote)
+ */
+export async function getRemoteWebhooks(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+
+    // Get any user token to call Twitch API
+    const token = await prisma.savedToken.findFirst({
+      where: { userId, tokenType: 'user' },
+      include: { twitchConfig: true },
+    });
+
+    if (!token) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'No user token found. Create a user token first to fetch remote subscriptions.',
+      });
+      return;
+    }
+
+    const { decrypt } = await import('../utils/encryption');
+    const accessToken = decrypt(token.accessToken);
+
+    // Fetch subscriptions from Twitch
+    const response = await axios.get(TWITCH_EVENTSUB_URL, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Client-Id': token.twitchConfig.clientId,
+      },
+    });
+
+    res.json({
+      subscriptions: response.data.data,
+      total: response.data.total,
+      max_total_cost: response.data.max_total_cost,
+      total_cost: response.data.total_cost,
+    });
+  } catch (error: any) {
+    console.error('Get remote webhooks error:', error);
+
+    if (error.response?.data) {
+      res.status(error.response.status || 500).json({
+        error: 'Twitch API error',
+        message: error.response.data.message || 'Failed to fetch remote subscriptions',
+        details: error.response.data,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to retrieve remote webhooks',
+    });
+  }
+}
+
+/**
+ * Sync EventSub subscriptions from Twitch to local database
+ */
+export async function syncWebhooks(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+
+    // Get any user token to call Twitch API
+    const token = await prisma.savedToken.findFirst({
+      where: { userId, tokenType: 'user' },
+      include: { twitchConfig: true },
+    });
+
+    if (!token) {
+      res.status(404).json({
+        error: 'Not found',
+        message: 'No user token found. Create a user token first to sync subscriptions.',
+      });
+      return;
+    }
+
+    const { decrypt } = await import('../utils/encryption');
+    const accessToken = decrypt(token.accessToken);
+
+    // Fetch subscriptions from Twitch
+    const response = await axios.get(TWITCH_EVENTSUB_URL, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Client-Id': token.twitchConfig.clientId,
+      },
+    });
+
+    const remoteSubscriptions = response.data.data;
+
+    // Get existing local webhooks
+    const localWebhooks = await prisma.webhook.findMany({
+      where: { userId },
+    });
+
+    const localSubscriptionIds = new Set(localWebhooks.map(w => w.subscriptionId));
+
+    // Import subscriptions that don't exist locally
+    let importedCount = 0;
+    let updatedCount = 0;
+
+    for (const sub of remoteSubscriptions) {
+      if (!localSubscriptionIds.has(sub.id)) {
+        // Create new webhook in database
+        await prisma.webhook.create({
+          data: {
+            userId,
+            subscriptionId: sub.id,
+            type: sub.type,
+            callbackUrl: sub.transport.callback,
+            status: sub.status,
+            cost: sub.cost || 0,
+          },
+        });
+        importedCount++;
+      } else {
+        // Update existing webhook status
+        await prisma.webhook.updateMany({
+          where: {
+            userId,
+            subscriptionId: sub.id,
+          },
+          data: {
+            status: sub.status,
+            cost: sub.cost || 0,
+          },
+        });
+        updatedCount++;
+      }
+    }
+
+    // Find and remove webhooks that no longer exist on Twitch
+    const remoteSubscriptionIds = new Set(remoteSubscriptions.map((s: any) => s.id));
+    let removedCount = 0;
+
+    for (const localWebhook of localWebhooks) {
+      if (!remoteSubscriptionIds.has(localWebhook.subscriptionId)) {
+        await prisma.webhook.delete({
+          where: { id: localWebhook.id },
+        });
+        removedCount++;
+      }
+    }
+
+    res.json({
+      message: 'Webhooks synchronized successfully',
+      imported: importedCount,
+      updated: updatedCount,
+      removed: removedCount,
+      total: remoteSubscriptions.length,
+    });
+  } catch (error: any) {
+    console.error('Sync webhooks error:', error);
+
+    if (error.response?.data) {
+      res.status(error.response.status || 500).json({
+        error: 'Twitch API error',
+        message: error.response.data.message || 'Failed to sync subscriptions',
+        details: error.response.data,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to sync webhooks',
+    });
+  }
+}
+
+/**
  * Generate a random secret for EventSub webhook verification
  */
 function generateSecret(): string {

@@ -12,11 +12,18 @@
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push"
   },
-  "keywords": ["twitch", "api", "oauth", "webhooks", "eventsub"],
+  "keywords": [
+    "twitch",
+    "api",
+    "oauth",
+    "webhooks",
+    "eventsub"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

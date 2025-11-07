@@ -164,6 +164,20 @@ export const TwitchConfigs: React.FC = () => {
                 Dashboard
               </button>
               <span className="text-gray-600">|</span>
+              <button
+                onClick={() => navigate('/tokens')}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Tokens
+              </button>
+              <span className="text-gray-600">|</span>
+              <button
+                onClick={() => navigate('/api-tester')}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                API Tester
+              </button>
+              <span className="text-gray-600">|</span>
               <span className="text-gray-300">
                 {user?.name || user?.email}
               </span>

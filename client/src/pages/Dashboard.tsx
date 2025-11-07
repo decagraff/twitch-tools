@@ -21,6 +21,27 @@ export const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center">
             <Logo />
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/tokens')}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Tokens
+              </button>
+              <span className="text-gray-600">|</span>
+              <button
+                onClick={() => navigate('/twitch-configs')}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Configurations
+              </button>
+              <span className="text-gray-600">|</span>
+              <button
+                onClick={() => navigate('/api-tester')}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                API Tester
+              </button>
+              <span className="text-gray-600">|</span>
               <span className="text-gray-300">
                 {user?.name || user?.email}
               </span>

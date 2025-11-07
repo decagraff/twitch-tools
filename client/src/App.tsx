@@ -10,6 +10,7 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { TwitchConfigs } from './pages/TwitchConfigs';
 import { Tokens } from './pages/Tokens';
+import { ApiTester } from './pages/ApiTester';
 
 // Components
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -53,6 +54,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/twitch-configs" element={<TwitchConfigs />} />
           <Route path="/tokens" element={<Tokens />} />
+          <Route path="/api-tester" element={<ApiTester />} />
         </Route>
 
         {/* Redirect unknown routes to landing */}

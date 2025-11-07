@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
 import { useAuthStore } from '../store/authStore';
 import tokenService from '../services/tokenService';
+import apiLogService from '../services/apiLogService';
 import type { SavedToken } from '../types/index';
 
 interface ApiCall {
@@ -53,6 +54,7 @@ export const ApiTester: React.FC = () => {
 
   useEffect(() => {
     loadTokens();
+    loadLogs();
   }, []);
 
   const loadTokens = async () => {
@@ -64,6 +66,26 @@ export const ApiTester: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load tokens');
+    }
+  };
+
+  const loadLogs = async () => {
+    try {
+      const data = await apiLogService.getAllLogs(20, 0);
+      // Convert to ApiCall format
+      const calls: ApiCall[] = data.logs.map((log) => ({
+        id: log.id,
+        timestamp: log.createdAt,
+        method: log.method,
+        endpoint: log.endpoint,
+        status: log.status,
+        response: log.responseBody,
+        error: log.error,
+      }));
+      setHistory(calls);
+    } catch (error: any) {
+      console.error('Failed to load logs:', error);
+      // Don't show error toast, logs are optional
     }
   };
 
@@ -125,6 +147,17 @@ export const ApiTester: React.FC = () => {
       setHistory((prev) => [call, ...prev]);
       setSelectedCall(call);
 
+      // Save to database (don't block on this)
+      apiLogService.createLog({
+        tokenId: selectedTokenId,
+        method,
+        endpoint,
+        status: response.status,
+        responseBody: data,
+      }).catch((err) => {
+        console.error('Failed to save log:', err);
+      });
+
       if (response.ok) {
         toast.success('API call successful!');
       } else {
@@ -143,6 +176,17 @@ export const ApiTester: React.FC = () => {
 
       setHistory((prev) => [call, ...prev]);
       setSelectedCall(call);
+
+      // Save error to database
+      apiLogService.createLog({
+        tokenId: selectedTokenId,
+        method,
+        endpoint,
+        error: error.message,
+      }).catch((err) => {
+        console.error('Failed to save log:', err);
+      });
+
       toast.error(error.message || 'API call failed');
     } finally {
       setIsLoading(false);

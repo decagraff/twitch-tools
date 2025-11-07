@@ -168,3 +168,38 @@ export interface Webhook {
   cost: number;
   createdAt: string;
 }
+
+export interface ApiLog {
+  id: string;
+  tokenId: string | null;
+  tokenName: string | null;
+  tokenType: string | null;
+  method: string;
+  endpoint: string;
+  status: number | null;
+  requestBody: any;
+  responseBody: any;
+  error: string | null;
+  createdAt: string;
+}
+
+export interface CreateApiLogRequest {
+  tokenId?: string;
+  method: string;
+  endpoint: string;
+  status?: number;
+  requestBody?: any;
+  responseBody?: any;
+  error?: string;
+}
+
+export interface ApiLogsResponse {
+  logs: ApiLog[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface ApiLogResponse {
+  log: ApiLog;
+}

@@ -23,6 +23,7 @@ model User {
   twitchConfigs TwitchConfig[]
   savedTokens   SavedToken[]
   webhooks      Webhook[]
+  apiLogs       ApiLog[]
 
   @@map("users")
 }
@@ -65,6 +66,7 @@ model SavedToken {
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   twitchConfig TwitchConfig @relation(fields: [twitchConfigId], references: [id], onDelete: Cascade)
+  apiLogs ApiLog[]
 
   @@map("saved_tokens")
 }
@@ -85,4 +87,25 @@ model Webhook {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("webhooks")
+}
+
+// API Call Logs
+model ApiLog {
+  id           String   @id @default(uuid())
+  userId       String
+  tokenId      String?  // Optional, might not use a token for some calls
+  method       String   // GET, POST, PUT, PATCH, DELETE
+  endpoint     String   // The API endpoint called
+  status       Int?     // HTTP status code (null if error before response)
+  requestBody  String?  // JSON string of request body
+  responseBody String?  // JSON string of response body
+  error        String?  // Error message if call failed
+  createdAt    DateTime @default(now())
+
+  // Relations
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token SavedToken? @relation(fields: [tokenId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("api_logs")
 }

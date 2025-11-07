@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import twitchConfigRoutes from './routes/twitchConfigRoutes';
 import tokenRoutes from './routes/tokenRoutes';
+import apiLogRoutes from './routes/apiLogRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -40,6 +41,7 @@ app.get('/api', (req, res) => {
       auth: '/api/auth',
       twitchConfigs: '/api/twitch-configs',
       tokens: '/api/tokens',
+      logs: '/api/logs',
       webhooks: '/api/webhooks'
     }
   });
@@ -53,6 +55,9 @@ app.use('/api/twitch-configs', twitchConfigRoutes);
 
 // Token routes
 app.use('/api/tokens', tokenRoutes);
+
+// API Log routes
+app.use('/api/logs', apiLogRoutes);
 
 // 404 Handler
 app.use((req, res) => {

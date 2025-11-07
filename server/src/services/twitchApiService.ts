@@ -131,12 +131,12 @@ export async function startDeviceFlow(
  * Poll for device flow token (check if user authorized)
  * @param clientId - Twitch application Client ID
  * @param deviceCode - Device code from startDeviceFlow
- * @returns Access token and expiration, or null if still pending
+ * @returns Access token, refresh token, and expiration, or null if still pending
  */
 export async function pollDeviceToken(
   clientId: string,
   deviceCode: string
-): Promise<{ accessToken: string; expiresIn: number; scopes: string[] } | null> {
+): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; scopes: string[] } | null> {
   try {
     const response = await axios.post(TWITCH_AUTH_URL, null, {
       params: {
@@ -148,6 +148,7 @@ export async function pollDeviceToken(
 
     return {
       accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
       expiresIn: response.data.expires_in,
       scopes: Array.isArray(response.data.scope)
         ? response.data.scope

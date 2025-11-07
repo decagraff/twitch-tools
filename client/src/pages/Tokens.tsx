@@ -317,28 +317,23 @@ export const Tokens: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      // Generate random state for CSRF protection
-      const state = crypto.randomUUID() + crypto.randomUUID();
-
-      // Store state and config data in sessionStorage for callback
-      sessionStorage.setItem('oauth_state', state);
-      sessionStorage.setItem('oauth_data', JSON.stringify({
-        twitchConfigId: userTokenFormData.twitchConfigId,
-        name: userTokenFormData.name.trim() || undefined,
-      }));
-
-      // Get authorization URL from backend
-      const result = await tokenService.startAuthorizationFlow({
+      const requestData: StartUserTokenRequest = {
         twitchConfigId: userTokenFormData.twitchConfigId,
         scopes: userTokenFormData.scopes,
-        state,
-      });
+        name: userTokenFormData.name.trim() || undefined,
+      };
 
-      // Redirect to Twitch authorization page
-      window.location.href = result.authorizationUrl;
+      const flowData = await tokenService.startUserToken(requestData);
+      setDeviceFlowData(flowData);
+      setShowUserTokenModal(false);
+      setShowDeviceFlowModal(true);
+
+      // Start polling
+      startPolling(flowData.deviceCode, flowData.interval);
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to start authorization';
+      const message = error.response?.data?.message || 'Failed to start user token flow';
       toast.error(message);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -791,14 +786,14 @@ export const Tokens: React.FC = () => {
               </div>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                 <p className="text-sm text-blue-400">
-                  <strong>OAuth Authorization:</strong> After clicking continue, you'll be
-                  redirected to Twitch to authorize access. Once authorized, you'll be brought
-                  back automatically with your new token.
+                  <strong>Device Flow:</strong> You'll receive a code to authorize on Twitch.
+                  Simply visit the URL, enter the code, and we'll automatically detect when you've
+                  authorized. No need to copy/paste anything back!
                 </p>
               </div>
               <div className="flex gap-3 pt-4">
                 <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? 'Redirecting...' : 'Authorize on Twitch'}
+                  {isSubmitting ? 'Starting...' : 'Start Authorization'}
                 </Button>
                 <button
                   type="button"

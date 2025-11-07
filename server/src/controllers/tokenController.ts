@@ -386,15 +386,17 @@ export async function pollUserToken(req: Request, res: Response): Promise<void> 
     // Calculate expiration date
     const expiresAt = new Date(Date.now() + tokenData.expiresIn * 1000);
 
-    // Encrypt and save the token
-    const encryptedToken = encrypt(tokenData.accessToken);
+    // Encrypt and save the tokens
+    const encryptedAccessToken = encrypt(tokenData.accessToken);
+    const encryptedRefreshToken = encrypt(tokenData.refreshToken);
 
     const savedToken = await prisma.savedToken.create({
       data: {
         userId,
         twitchConfigId,
         tokenType: 'user',
-        accessToken: encryptedToken,
+        accessToken: encryptedAccessToken,
+        refreshToken: encryptedRefreshToken,
         scopes: tokenData.scopes,
         channelLogin: validation.login,
         channelId: validation.userId,

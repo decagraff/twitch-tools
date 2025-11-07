@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { prisma } from '../config/database';
+import prisma from '../config/database';
 import { encrypt, decrypt } from '../utils/encryption';
 
 /**

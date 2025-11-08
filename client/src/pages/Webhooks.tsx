@@ -19,6 +19,10 @@ export const Webhooks: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     tokenId: '',
     type: '',
@@ -178,6 +182,59 @@ export const Webhooks: React.FC = () => {
     return new Date(dateString).toLocaleString();
   };
 
+  const toggleGroup = (broadcasterId: string) => {
+    const newCollapsed = new Set(collapsedGroups);
+    if (newCollapsed.has(broadcasterId)) {
+      newCollapsed.delete(broadcasterId);
+    } else {
+      newCollapsed.add(broadcasterId);
+    }
+    setCollapsedGroups(newCollapsed);
+  };
+
+  // Filter webhooks based on search and filters
+  const filteredWebhooks = webhooks.filter(webhook => {
+    // Search filter
+    if (searchTerm) {
+      const broadcasterUserId = webhook.condition?.broadcaster_user_id || '';
+      const moderatorUserId = webhook.condition?.moderator_user_id || '';
+      const toBroadcasterUserId = webhook.condition?.to_broadcaster_user_id || '';
+
+      const matchesSearch =
+        broadcasterUserId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        moderatorUserId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        toBroadcasterUserId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        webhook.type.toLowerCase().includes(searchTerm.toLowerCase());
+
+      if (!matchesSearch) return false;
+    }
+
+    // Type filter
+    if (filterType && webhook.type !== filterType) return false;
+
+    // Status filter
+    if (filterStatus && webhook.status !== filterStatus) return false;
+
+    return true;
+  });
+
+  // Group webhooks by broadcaster_user_id
+  const groupedWebhooks = filteredWebhooks.reduce((groups, webhook) => {
+    const broadcasterId = webhook.condition?.broadcaster_user_id ||
+                          webhook.condition?.to_broadcaster_user_id ||
+                          'unknown';
+
+    if (!groups[broadcasterId]) {
+      groups[broadcasterId] = [];
+    }
+    groups[broadcasterId].push(webhook);
+    return groups;
+  }, {} as Record<string, Webhook[]>);
+
+  // Get unique types and statuses for filters
+  const uniqueTypes = Array.from(new Set(webhooks.map(w => w.type))).sort();
+  const uniqueStatuses = Array.from(new Set(webhooks.map(w => w.status))).sort();
+
   const selectedType = eventTypes.find(t => t.type === formData.type);
 
   return (
@@ -306,8 +363,110 @@ export const Webhooks: React.FC = () => {
             </div>
           </Card>
         ) : (
-          <div className="grid gap-4">
-            {webhooks.map((webhook) => (
+          <>
+            {/* Filters and Search */}
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Search */}
+              <div className="md:col-span-1">
+                <input
+                  type="text"
+                  placeholder="Search by broadcaster ID, type..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-twitch-purple"
+                />
+              </div>
+
+              {/* Type Filter */}
+              <div>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="w-full px-4 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white focus:outline-none focus:border-twitch-purple"
+                >
+                  <option value="">All Types</option>
+                  {uniqueTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-4 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white focus:outline-none focus:border-twitch-purple"
+                >
+                  <option value="">All Statuses</option>
+                  {uniqueStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Stats Summary */}
+            <div className="mb-4 flex items-center justify-between bg-twitch-dark-light rounded-lg p-3">
+              <div className="flex items-center gap-4 text-sm text-white/60">
+                <span>{Object.keys(groupedWebhooks).length} Broadcaster(s)</span>
+                <span>•</span>
+                <span>{filteredWebhooks.length} Subscription(s)</span>
+                <span>•</span>
+                <span>Total Cost: {filteredWebhooks.reduce((sum, w) => sum + w.cost, 0)}</span>
+              </div>
+            </div>
+
+            {/* Grouped Webhooks */}
+            <div className="space-y-4">
+              {Object.entries(groupedWebhooks).map(([broadcasterId, groupWebhooks]) => {
+                const isCollapsed = collapsedGroups.has(broadcasterId);
+                const enabledCount = groupWebhooks.filter(w => w.status === 'enabled').length;
+
+                return (
+                  <div key={broadcasterId} className="border border-white/10 rounded-lg overflow-hidden">
+                    {/* Group Header */}
+                    <button
+                      onClick={() => toggleGroup(broadcasterId)}
+                      className="w-full px-4 py-3 bg-twitch-dark-light hover:bg-white/5 flex items-center justify-between transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <svg
+                          className={`w-5 h-5 text-white/60 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        <svg className="w-5 h-5 text-twitch-purple" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                        <div className="text-left">
+                          <h3 className="text-lg font-semibold text-white">
+                            Broadcaster ID: <span className="font-mono">{broadcasterId}</span>
+                          </h3>
+                          <p className="text-xs text-white/60">
+                            {groupWebhooks.length} subscription(s) • {enabledCount} enabled
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {groupWebhooks.some(w => w.status === 'enabled') && (
+                          <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
+                            Active
+                          </span>
+                        )}
+                        <span className="text-xs text-white/40">
+                          {isCollapsed ? 'Expand' : 'Collapse'}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Group Content */}
+                    {!isCollapsed && (
+                      <div className="p-4 space-y-3 bg-twitch-dark">
+                        {groupWebhooks.map((webhook) => (
               <Card key={webhook.id}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -394,9 +553,15 @@ export const Webhooks: React.FC = () => {
                     Delete
                   </Button>
                 </div>
-              </Card>
-            ))}
-          </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 

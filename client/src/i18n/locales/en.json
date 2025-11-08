@@ -9,6 +9,7 @@
     "update": "Update",
     "logout": "Logout",
     "dashboard": "Dashboard",
+    "backToHome": "Back to Home",
     "configurations": "Configurations",
     "tokens": "Tokens",
     "webhooks": "Webhooks",

@@ -175,7 +175,7 @@ export const Register: React.FC = () => {
             to="/"
             className="text-gray-400 hover:text-white text-sm transition-colors"
           >
-            ← {t('common.dashboard')}
+            ← {t('common.backToHome')}
           </Link>
         </div>
       </div>

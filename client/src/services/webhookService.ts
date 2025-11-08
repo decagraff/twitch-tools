@@ -59,14 +59,15 @@ const webhookService = {
   /**
    * Sync EventSub subscriptions from Twitch to local database
    */
-  async syncWebhooks(): Promise<{
+  async syncWebhooks(configId?: string): Promise<{
     message: string;
     imported: number;
     updated: number;
     removed: number;
     total: number;
+    configsSynced?: string;
   }> {
-    const response = await api.post('/webhooks/sync');
+    const response = await api.post('/webhooks/sync', configId ? { configId } : {});
     return response.data;
   },
 };

@@ -329,96 +329,117 @@ export async function getRemoteWebhooks(req: Request, res: Response): Promise<vo
 export async function syncWebhooks(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user!.userId;
+    const { configId } = req.body; // Optional: specific config to sync
 
-    // Get an app token to call Twitch API (app tokens are required for EventSub list)
-    const token = await prisma.savedToken.findFirst({
-      where: { userId, tokenType: 'app' },
+    // Get app tokens to use
+    const tokens = await prisma.savedToken.findMany({
+      where: {
+        userId,
+        tokenType: 'app',
+        ...(configId && { twitchConfigId: configId }),
+      },
       include: { twitchConfig: true },
     });
 
-    if (!token) {
+    if (tokens.length === 0) {
       res.status(404).json({
         error: 'Not found',
-        message: 'No app token found. Create an app token first to sync subscriptions.',
+        message: configId
+          ? 'No app token found for this configuration.'
+          : 'No app tokens found. Create an app token first to sync subscriptions.',
       });
       return;
     }
 
     const { decrypt } = await import('../utils/encryption');
-    const accessToken = decrypt(token.accessToken);
 
-    // Fetch subscriptions from Twitch
-    const response = await axios.get(TWITCH_EVENTSUB_URL, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Client-Id': token.twitchConfig.clientId,
-      },
-    });
+    let totalImported = 0;
+    let totalUpdated = 0;
+    let totalRemoved = 0;
+    let totalSubscriptions = 0;
+    const configsSynced: string[] = [];
 
-    const remoteSubscriptions = response.data.data;
+    // Sync each app token's subscriptions
+    for (const token of tokens) {
+      try {
+        const accessToken = decrypt(token.accessToken);
 
-    // Get existing local webhooks
-    const localWebhooks = await prisma.webhook.findMany({
-      where: { userId },
-    });
-
-    const localSubscriptionIds = new Set(localWebhooks.map(w => w.subscriptionId));
-
-    // Import subscriptions that don't exist locally
-    let importedCount = 0;
-    let updatedCount = 0;
-
-    for (const sub of remoteSubscriptions) {
-      if (!localSubscriptionIds.has(sub.id)) {
-        // Create new webhook in database
-        await prisma.webhook.create({
-          data: {
-            userId,
-            subscriptionId: sub.id,
-            type: sub.type,
-            condition: sub.condition,
-            callbackUrl: sub.transport.callback,
-            status: sub.status,
-            cost: sub.cost || 0,
+        // Fetch subscriptions from Twitch for this config
+        const response = await axios.get(TWITCH_EVENTSUB_URL, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Client-Id': token.twitchConfig.clientId,
           },
         });
-        importedCount++;
-      } else {
-        // Update existing webhook status and condition
-        await prisma.webhook.updateMany({
-          where: {
-            userId,
-            subscriptionId: sub.id,
-          },
-          data: {
-            status: sub.status,
-            condition: sub.condition,
-            cost: sub.cost || 0,
-          },
-        });
-        updatedCount++;
-      }
-    }
 
-    // Find and remove webhooks that no longer exist on Twitch
-    const remoteSubscriptionIds = new Set(remoteSubscriptions.map((s: any) => s.id));
-    let removedCount = 0;
+        const remoteSubscriptions = response.data.data;
+        totalSubscriptions += remoteSubscriptions.length;
+        configsSynced.push(token.twitchConfig.name || token.twitchConfig.clientId);
 
-    for (const localWebhook of localWebhooks) {
-      if (!remoteSubscriptionIds.has(localWebhook.subscriptionId)) {
-        await prisma.webhook.delete({
-          where: { id: localWebhook.id },
+        // Get existing local webhooks for this user
+        const localWebhooks = await prisma.webhook.findMany({
+          where: { userId },
         });
-        removedCount++;
+
+        const localSubscriptionIds = new Set(localWebhooks.map(w => w.subscriptionId));
+
+        // Import subscriptions that don't exist locally
+        for (const sub of remoteSubscriptions) {
+          if (!localSubscriptionIds.has(sub.id)) {
+            // Create new webhook in database
+            await prisma.webhook.create({
+              data: {
+                userId,
+                subscriptionId: sub.id,
+                type: sub.type,
+                condition: sub.condition,
+                callbackUrl: sub.transport.callback,
+                status: sub.status,
+                cost: sub.cost || 0,
+              },
+            });
+            totalImported++;
+          } else {
+            // Update existing webhook status and condition
+            await prisma.webhook.updateMany({
+              where: {
+                userId,
+                subscriptionId: sub.id,
+              },
+              data: {
+                status: sub.status,
+                condition: sub.condition,
+                cost: sub.cost || 0,
+              },
+            });
+            totalUpdated++;
+          }
+        }
+
+        // Find and remove webhooks that no longer exist on Twitch
+        const remoteSubscriptionIds = new Set(remoteSubscriptions.map((s: any) => s.id));
+
+        for (const localWebhook of localWebhooks) {
+          if (!remoteSubscriptionIds.has(localWebhook.subscriptionId)) {
+            await prisma.webhook.delete({
+              where: { id: localWebhook.id },
+            });
+            totalRemoved++;
+          }
+        }
+      } catch (error: any) {
+        console.error(`Failed to sync config ${token.twitchConfig.name}:`, error);
+        // Continue with other configs even if one fails
       }
     }
 
     res.json({
       message: 'Webhooks synchronized successfully',
-      imported: importedCount,
-      updated: updatedCount,
-      removed: removedCount,
-      total: remoteSubscriptions.length,
+      imported: totalImported,
+      updated: totalUpdated,
+      removed: totalRemoved,
+      total: totalSubscriptions,
+      configsSynced: configsSynced.join(', '),
     });
   } catch (error: any) {
     console.error('Sync webhooks error:', error);

@@ -7,7 +7,8 @@ import { Logo } from '../components/Logo';
 import { useAuthStore } from '../store/authStore';
 import webhookService from '../services/webhookService';
 import tokenService from '../services/tokenService';
-import type { Webhook, EventSubType, SavedToken } from '../types/index';
+import twitchConfigService from '../services/twitchConfigService';
+import type { Webhook, EventSubType, SavedToken, TwitchConfig } from '../types/index';
 
 export const Webhooks: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ export const Webhooks: React.FC = () => {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [eventTypes, setEventTypes] = useState<EventSubType[]>([]);
   const [tokens, setTokens] = useState<SavedToken[]>([]);
+  const [configs, setConfigs] = useState<TwitchConfig[]>([]);
+  const [selectedConfigForSync, setSelectedConfigForSync] = useState<string>(''); // empty = all
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,15 +46,17 @@ export const Webhooks: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [webhooksData, typesData, tokensData] = await Promise.all([
+      const [webhooksData, typesData, tokensData, configsData] = await Promise.all([
         webhookService.getAllWebhooks(),
         webhookService.getEventSubTypes(),
         tokenService.getAllTokens(),
+        twitchConfigService.getAllConfigs(),
       ]);
 
       setWebhooks(webhooksData);
       setEventTypes(typesData);
       setTokens(tokensData); // Keep all tokens to check for app tokens
+      setConfigs(configsData);
 
       // Set default token to first user token for webhook creation
       const userTokens = tokensData.filter(t => t.tokenType === 'user');
@@ -161,14 +166,15 @@ export const Webhooks: React.FC = () => {
 
     try {
       setIsSyncing(true);
-      const result = await webhookService.syncWebhooks();
+      const result = await webhookService.syncWebhooks(selectedConfigForSync || undefined);
 
       let message = `Sync completed: ${result.total} total subscriptions found`;
       if (result.imported > 0) message += `, ${result.imported} imported`;
       if (result.updated > 0) message += `, ${result.updated} updated`;
       if (result.removed > 0) message += `, ${result.removed} removed`;
+      if (result.configsSynced) message += `\n\nConfigs: ${result.configsSynced}`;
 
-      toast.success(message, { duration: 5000 });
+      toast.success(message, { duration: 6000 });
       loadData();
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to sync webhooks';
@@ -292,7 +298,22 @@ export const Webhooks: React.FC = () => {
               Manage your Twitch EventSub subscriptions
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            {/* Config Selector for Sync */}
+            <select
+              value={selectedConfigForSync}
+              onChange={(e) => setSelectedConfigForSync(e.target.value)}
+              disabled={isSyncing}
+              className="px-3 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-twitch-purple disabled:opacity-50"
+            >
+              <option value="">All Configurations</option>
+              {configs.map(config => (
+                <option key={config.id} value={config.id}>
+                  {config.name || config.clientId}
+                </option>
+              ))}
+            </select>
+
             <button
               onClick={handleSync}
               disabled={isSyncing || !tokens.some(t => t.tokenType === 'app')}
@@ -311,7 +332,7 @@ export const Webhooks: React.FC = () => {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              {isSyncing ? 'Syncing...' : 'Sync with Twitch'}
+              {isSyncing ? 'Syncing...' : 'Sync'}
             </button>
             <Button onClick={handleOpenCreateModal}>
               <span className="text-xl mr-2">+</span>

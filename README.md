@@ -103,7 +103,7 @@ A modern, full-stack web application for managing Twitch OAuth tokens and EventS
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/twitch-tools.git
+git clone https://github.com/decagraff/twitch-tools.git
 cd twitch-tools
 
 # Install server dependencies
@@ -310,9 +310,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/twitch-tools/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/twitch-tools/discussions)
-- **Email:** support@example.com
+- **Issues:** [GitHub Issues](https://github.com/decagraff/twitch-tools/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/decagraff/twitch-tools/discussions)
+- **Email:** anthonydeca@decatron.net
 
 ---
 

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Logo } from '../components/Logo';
+import LanguageSelector from '../components/LanguageSelector';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import tokenService from '../services/tokenService';
@@ -12,6 +14,7 @@ import twitchApiService, { type TwitchUser, type TwitchStream } from '../service
 import type { SavedToken } from '../types/index';
 
 export const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -114,7 +117,7 @@ export const Dashboard: React.FC = () => {
       });
     } catch (error: any) {
       console.error('Failed to load Twitch data:', error);
-      toast.error('Failed to load Twitch channel data');
+      toast.error(t('errors.somethingWentWrong'));
     }
   };
 
@@ -136,32 +139,41 @@ export const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center">
             <Logo />
             <div className="flex items-center space-x-4">
+              <LanguageSelector />
+              <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/tokens')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Tokens
+                {t('common.tokens')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/twitch-configs')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Configurations
+                {t('common.configurations')}
+              </button>
+              <span className="text-gray-600">|</span>
+              <button
+                onClick={() => navigate('/webhooks')}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                {t('common.webhooks')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/api-tester')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                API Tester
+                {t('common.apiTester')}
               </button>
               <span className="text-gray-600">|</span>
               <span className="text-gray-300">
                 {user?.name || user?.email}
               </span>
               <Button variant="secondary" onClick={handleLogout}>
-                Logout
+                {t('common.logout')}
               </Button>
             </div>
           </div>
@@ -179,10 +191,10 @@ export const Dashboard: React.FC = () => {
             {/* Welcome Section */}
             <div className="mb-8">
               <h1 className="text-4xl font-bold text-white mb-2">
-                Welcome back{user?.name ? `, ${user.name}` : ''}! 👋
+                {t('auth.welcomeBack')}{user?.name ? `, ${user.name}` : ''}! 👋
               </h1>
               <p className="text-gray-400">
-                Here's your Twitch Tools dashboard overview
+                {t('dashboard.subtitle')}
               </p>
             </div>
 
@@ -207,11 +219,11 @@ export const Dashboard: React.FC = () => {
                         {twitchData.stream ? (
                           <span className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-full flex items-center gap-2">
                             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                            LIVE
+                            {t('dashboard.live')}
                           </span>
                         ) : (
                           <span className="px-3 py-1 bg-gray-500/20 text-gray-400 text-sm font-medium rounded-full">
-                            OFFLINE
+                            {t('dashboard.offline')}
                           </span>
                         )}
                       </div>
@@ -229,7 +241,7 @@ export const Dashboard: React.FC = () => {
                               <p className="text-2xl font-bold text-twitch-purple">
                                 {formatNumber(twitchData.stream.viewer_count)}
                               </p>
-                              <p className="text-white/60 text-sm">viewers</p>
+                              <p className="text-white/60 text-sm">{t('dashboard.viewers')}</p>
                             </div>
                           </div>
                         </div>
@@ -241,14 +253,14 @@ export const Dashboard: React.FC = () => {
                           <p className="text-2xl font-bold text-white">
                             {formatNumber(twitchData.user.view_count)}
                           </p>
-                          <p className="text-white/60 text-sm">Total Views</p>
+                          <p className="text-white/60 text-sm">{t('dashboard.viewers')}</p>
                         </div>
                         {twitchData.followers > 0 && (
                           <div>
                             <p className="text-2xl font-bold text-white">
                               {formatNumber(twitchData.followers)}
                             </p>
-                            <p className="text-white/60 text-sm">Followers</p>
+                            <p className="text-white/60 text-sm">{t('dashboard.followers')}</p>
                           </div>
                         )}
                         {twitchData.subscribers > 0 && (
@@ -256,7 +268,7 @@ export const Dashboard: React.FC = () => {
                             <p className="text-2xl font-bold text-white">
                               {formatNumber(twitchData.subscribers)}
                             </p>
-                            <p className="text-white/60 text-sm">Subscribers</p>
+                            <p className="text-white/60 text-sm">{t('dashboard.subscribers')}</p>
                           </div>
                         )}
                       </div>
@@ -270,54 +282,54 @@ export const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
               <Card>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Configurations</h3>
+                  <h3 className="text-lg font-semibold text-white">{t('common.configurations')}</h3>
                   <span className="text-3xl">⚙️</span>
                 </div>
                 <p className="text-3xl font-bold text-white mb-1">{stats.configs}</p>
-                <p className="text-sm text-gray-400">Twitch Apps</p>
+                <p className="text-sm text-gray-400">{t('configurations.title')}</p>
               </Card>
 
               <Card>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Tokens</h3>
+                  <h3 className="text-lg font-semibold text-white">{t('common.tokens')}</h3>
                   <span className="text-3xl">🔑</span>
                 </div>
                 <p className="text-3xl font-bold text-white mb-1">{stats.tokens}</p>
-                <p className="text-sm text-gray-400">Saved Tokens</p>
+                <p className="text-sm text-gray-400">{t('tokens.title')}</p>
               </Card>
 
               <Card>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">API Calls</h3>
+                  <h3 className="text-lg font-semibold text-white">{t('common.apiTester')}</h3>
                   <span className="text-3xl">📊</span>
                 </div>
                 <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.logs)}</p>
-                <p className="text-sm text-gray-400">Total Calls</p>
+                <p className="text-sm text-gray-400">{t('apiTester.title')}</p>
               </Card>
             </div>
 
             {/* Quick Actions */}
             <Card>
-              <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">{t('dashboard.title')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Button
                   className="w-full py-4"
                   onClick={() => navigate('/tokens')}
                 >
-                  Manage Tokens
+                  {t('tokens.title')}
                 </Button>
                 <Button
                   className="w-full py-4"
                   onClick={() => navigate('/webhooks')}
                 >
-                  Manage Webhooks
+                  {t('webhooks.title')}
                 </Button>
                 <Button
                   className="w-full py-4"
                   onClick={() => navigate('/api-tester')}
                   variant="secondary"
                 >
-                  Test API
+                  {t('apiTester.title')}
                 </Button>
               </div>
             </Card>

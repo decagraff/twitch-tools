@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Logo } from '../components/Logo';
+import LanguageSelector from '../components/LanguageSelector';
 import { useAuthStore } from '../store/authStore';
 import twitchConfigService from '../services/twitchConfigService';
 import type { TwitchConfig, CreateTwitchConfigRequest } from '../types/index';
 
 export const TwitchConfigs: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [configs, setConfigs] = useState<TwitchConfig[]>([]);
@@ -44,7 +47,7 @@ export const TwitchConfigs: React.FC = () => {
       const data = await twitchConfigService.getAllConfigs();
       setConfigs(data);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load configurations');
+      toast.error(error.response?.data?.message || t('errors.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +85,7 @@ export const TwitchConfigs: React.FC = () => {
 
   const handleValidate = async () => {
     if (!formData.clientId || !formData.clientSecret) {
-      toast.error('Please enter Client ID and Client Secret first');
+      toast.error(t('configurations.requiredFields'));
       return;
     }
 
@@ -95,12 +98,12 @@ export const TwitchConfigs: React.FC = () => {
       setValidationResult(result);
 
       if (result.valid) {
-        toast.success('Credentials are valid! ✓');
+        toast.success(t('configurations.credentialsValid') + ' ✓');
       } else {
         toast.error(result.message);
       }
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to validate credentials';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
       setValidationResult({ valid: false, message });
     } finally {
@@ -112,7 +115,7 @@ export const TwitchConfigs: React.FC = () => {
     e.preventDefault();
 
     if (!formData.clientId || !formData.clientSecret) {
-      toast.error('Client ID and Client Secret are required');
+      toast.error(t('configurations.requiredFields'));
       return;
     }
 
@@ -128,18 +131,18 @@ export const TwitchConfigs: React.FC = () => {
       if (editingConfig) {
         // Update existing config
         await twitchConfigService.updateConfig(editingConfig.id, requestData);
-        toast.success('Configuration updated successfully');
+        toast.success(t('configurations.configUpdated'));
       } else {
         // Create new config
         await twitchConfigService.createConfig(requestData);
-        toast.success('Configuration created successfully');
+        toast.success(t('configurations.configCreated'));
       }
 
       handleCloseModal();
       loadConfigs();
     } catch (error: any) {
       const message =
-        error.response?.data?.message || 'Failed to save configuration';
+        error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -148,12 +151,10 @@ export const TwitchConfigs: React.FC = () => {
 
   const handleDelete = async (config: TwitchConfig) => {
     const tokenCount = config.tokensCount || 0;
-    let confirmMessage = `Are you sure you want to delete the configuration "${
-      config.name || config.clientId
-    }"?`;
+    let confirmMessage = t('configurations.deleteConfirmation', { name: config.name || config.clientId });
 
     if (tokenCount > 0) {
-      confirmMessage += `\n\nWarning: This configuration has ${tokenCount} active token(s). You must delete those tokens first.`;
+      confirmMessage += '\n\n' + t('configurations.deleteWarning', { count: tokenCount });
     }
 
     if (!window.confirm(confirmMessage)) {
@@ -162,11 +163,11 @@ export const TwitchConfigs: React.FC = () => {
 
     try {
       await twitchConfigService.deleteConfig(config.id);
-      toast.success('Configuration deleted successfully');
+      toast.success(t('configurations.configDeleted'));
       loadConfigs();
     } catch (error: any) {
       const message =
-        error.response?.data?.message || 'Failed to delete configuration';
+        error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message, { duration: 5000 });
     }
   };
@@ -198,28 +199,30 @@ export const TwitchConfigs: React.FC = () => {
                 onClick={() => navigate('/dashboard')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Dashboard
+                {t('common.dashboard')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/tokens')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Tokens
+                {t('common.tokens')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/api-tester')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                API Tester
+                {t('common.apiTester')}
               </button>
+              <span className="text-gray-600">|</span>
+              <LanguageSelector />
               <span className="text-gray-600">|</span>
               <span className="text-gray-300">
                 {user?.name || user?.email}
               </span>
               <Button variant="secondary" onClick={handleLogout}>
-                Logout
+                {t('common.logout')}
               </Button>
             </div>
           </div>
@@ -232,15 +235,15 @@ export const TwitchConfigs: React.FC = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Twitch Configurations
+              {t('configurations.title')}
             </h1>
             <p className="text-white/60">
-              Manage your Twitch application credentials
+              {t('configurations.subtitle')}
             </p>
           </div>
           <Button onClick={() => handleOpenModal()}>
             <span className="text-xl mr-2">+</span>
-            Add Configuration
+            {t('configurations.addConfiguration')}
           </Button>
         </div>
 
@@ -254,12 +257,12 @@ export const TwitchConfigs: React.FC = () => {
           <Card className="text-center py-12">
             <div className="text-6xl mb-4">📝</div>
             <h2 className="text-xl font-semibold text-white mb-2">
-              No configurations yet
+              {t('configurations.noConfigurations')}
             </h2>
             <p className="text-white/60 mb-6">
-              Add your first Twitch application to get started
+              {t('configurations.noConfigurationsText')}
             </p>
-            <Button onClick={() => handleOpenModal()}>Add Configuration</Button>
+            <Button onClick={() => handleOpenModal()}>{t('configurations.addConfiguration')}</Button>
           </Card>
         ) : (
           /* Configs List */
@@ -273,30 +276,30 @@ export const TwitchConfigs: React.FC = () => {
                         {config.name || 'Unnamed Configuration'}
                       </h3>
                       <span className="px-2 py-1 bg-twitch-purple/20 text-twitch-purple text-xs rounded-full">
-                        Active
+                        {t('configurations.active')}
                       </span>
                       {config.tokensCount !== undefined && config.tokensCount > 0 && (
                         <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">
-                          {config.tokensCount} {config.tokensCount === 1 ? 'token' : 'tokens'}
+                          {t('configurations.tokens', { count: config.tokensCount })}
                         </span>
                       )}
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-white/60">Client ID:</span>
+                        <span className="text-white/60">{t('configurations.clientId')}:</span>
                         <code className="text-white bg-twitch-dark-light px-2 py-1 rounded">
                           {config.clientId}
                         </code>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-white/60">Client Secret:</span>
+                        <span className="text-white/60">{t('configurations.clientSecret')}:</span>
                         <code className="text-white/40 bg-twitch-dark-light px-2 py-1 rounded">
                           {maskSecret(config.clientSecret)}
                         </code>
                       </div>
                       <div className="flex items-center gap-4 text-xs text-white/40 mt-3">
-                        <span>Created: {formatDate(config.createdAt)}</span>
-                        <span>Updated: {formatDate(config.updatedAt)}</span>
+                        <span>{t('configurations.created')}: {formatDate(config.createdAt)}</span>
+                        <span>{t('configurations.updated')}: {formatDate(config.updatedAt)}</span>
                       </div>
                     </div>
                   </div>
@@ -305,13 +308,13 @@ export const TwitchConfigs: React.FC = () => {
                       onClick={() => handleOpenModal(config)}
                       className="px-4 py-2 bg-twitch-dark-light hover:bg-white/10 text-white rounded-lg transition-colors"
                     >
-                      Edit
+                      {t('common.edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(config)}
                       className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
                     >
-                      Delete
+                      {t('common.delete')}
                     </button>
                   </div>
                 </div>
@@ -326,16 +329,16 @@ export const TwitchConfigs: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <Card className="max-w-lg w-full">
             <h2 className="text-2xl font-bold text-white mb-6">
-              {editingConfig ? 'Edit Configuration' : 'Add Configuration'}
+              {editingConfig ? t('configurations.editConfiguration') : t('configurations.addConfiguration')}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Name (Optional)
+                  {t('configurations.name')}
                 </label>
                 <Input
                   type="text"
-                  placeholder="My Twitch App"
+                  placeholder={t('configurations.namePlaceholder')}
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
@@ -344,11 +347,11 @@ export const TwitchConfigs: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Client ID *
+                  {t('configurations.clientId')} *
                 </label>
                 <Input
                   type="text"
-                  placeholder="your_client_id_here"
+                  placeholder={t('configurations.clientIdPlaceholder')}
                   value={formData.clientId}
                   onChange={(e) => {
                     setFormData({ ...formData, clientId: e.target.value });
@@ -357,16 +360,16 @@ export const TwitchConfigs: React.FC = () => {
                   required
                 />
                 <p className="text-xs text-white/40 mt-1">
-                  30-31 characters, lowercase letters and numbers only
+                  {t('configurations.clientIdHint')}
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Client Secret *
+                  {t('configurations.clientSecret')} *
                 </label>
                 <Input
                   type="password"
-                  placeholder="your_client_secret_here"
+                  placeholder={t('configurations.clientSecretPlaceholder')}
                   value={formData.clientSecret}
                   onChange={(e) => {
                     setFormData({ ...formData, clientSecret: e.target.value });
@@ -375,7 +378,7 @@ export const TwitchConfigs: React.FC = () => {
                   required
                 />
                 <p className="text-xs text-white/40 mt-1">
-                  30 characters, lowercase letters and numbers only
+                  {t('configurations.clientSecretHint')}
                 </p>
               </div>
 
@@ -387,7 +390,7 @@ export const TwitchConfigs: React.FC = () => {
                   disabled={isValidating || !formData.clientId || !formData.clientSecret}
                   className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  {isValidating ? 'Validating...' : '✓ Validate Credentials with Twitch'}
+                  {isValidating ? t('configurations.validating') : t('configurations.validateCredentials')}
                 </button>
               </div>
 
@@ -418,10 +421,10 @@ export const TwitchConfigs: React.FC = () => {
               <div className="flex gap-3 pt-4">
                 <Button type="submit" disabled={isSubmitting} className="flex-1">
                   {isSubmitting
-                    ? 'Saving...'
+                    ? t('common.loading')
                     : editingConfig
-                    ? 'Update Configuration'
-                    : 'Create Configuration'}
+                    ? t('configurations.editConfiguration')
+                    : t('configurations.createConfiguration')}
                 </Button>
                 <button
                   type="button"
@@ -429,7 +432,7 @@ export const TwitchConfigs: React.FC = () => {
                   disabled={isSubmitting}
                   className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>

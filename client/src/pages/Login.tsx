@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { login, isLoading, error } = useAuthStore();
 
   const [formData, setFormData] = useState({
@@ -22,13 +24,13 @@ export const Login: React.FC = () => {
     const newErrors: { email?: string; password?: string } = {};
 
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('errors.requiredField');
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = t('errors.invalidEmail');
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('errors.requiredField');
     }
 
     setErrors(newErrors);
@@ -44,10 +46,10 @@ export const Login: React.FC = () => {
 
     try {
       await login(formData);
-      toast.success('Welcome back!');
+      toast.success(t('auth.welcomeBack'));
       navigate('/dashboard');
     } catch (err) {
-      toast.error(error || 'Failed to login');
+      toast.error(error || t('errors.unauthorized'));
     }
   };
 
@@ -70,14 +72,14 @@ export const Login: React.FC = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Logo className="justify-center mb-4" />
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-gray-400">Sign in to your account</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{t('auth.welcomeBack')}</h1>
+          <p className="text-gray-400">{t('auth.login')}</p>
         </div>
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              label="Email"
+              label={t('auth.email')}
               type="email"
               name="email"
               placeholder="you@example.com"
@@ -88,7 +90,7 @@ export const Login: React.FC = () => {
             />
 
             <Input
-              label="Password"
+              label={t('auth.password')}
               type="password"
               name="password"
               placeholder="••••••••"
@@ -110,18 +112,18 @@ export const Login: React.FC = () => {
               isLoading={isLoading}
               disabled={isLoading}
             >
-              Sign In
+              {t('auth.login')}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
-              Don't have an account?{' '}
+              {t('auth.dontHaveAccount')}{' '}
               <Link
                 to="/register"
                 className="text-twitch-purple hover:text-twitch-purple-light font-medium"
               >
-                Sign up
+                {t('auth.registerHere')}
               </Link>
             </p>
           </div>
@@ -132,7 +134,7 @@ export const Login: React.FC = () => {
             to="/"
             className="text-gray-400 hover:text-white text-sm transition-colors"
           >
-            ← Back to home
+            ← {t('common.dashboard')}
           </Link>
         </div>
       </div>

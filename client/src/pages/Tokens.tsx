@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Logo } from '../components/Logo';
+import LanguageSelector from '../components/LanguageSelector';
 import { useAuthStore } from '../store/authStore';
 import tokenService from '../services/tokenService';
 import twitchConfigService from '../services/twitchConfigService';
@@ -17,6 +19,7 @@ import type {
 } from '../types/index';
 
 export const Tokens: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [tokens, setTokens] = useState<SavedToken[]>([]);
@@ -62,7 +65,7 @@ export const Tokens: React.FC = () => {
       const data = await tokenService.getAllTokens();
       setTokens(data);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load tokens');
+      toast.error(error.response?.data?.message || t('errors.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
@@ -73,13 +76,13 @@ export const Tokens: React.FC = () => {
       const data = await twitchConfigService.getAllConfigs();
       setConfigs(data);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load configurations');
+      toast.error(error.response?.data?.message || t('errors.somethingWentWrong'));
     }
   };
 
   const handleOpenGenerateModal = () => {
     if (configs.length === 0) {
-      toast.error('Please create a Twitch configuration first');
+      toast.error(t('configurations.noConfigurations'));
       navigate('/twitch-configs');
       return;
     }
@@ -102,7 +105,7 @@ export const Tokens: React.FC = () => {
     e.preventDefault();
 
     if (!formData.twitchConfigId) {
-      toast.error('Please select a configuration');
+      toast.error(t('configurations.noConfigurations'));
       return;
     }
 
@@ -115,7 +118,7 @@ export const Tokens: React.FC = () => {
       };
 
       const newToken = await tokenService.generateAppToken(requestData);
-      toast.success('App Access Token generated successfully!');
+      toast.success(t('tokens.tokenGenerated'));
       handleCloseGenerateModal();
       loadTokens();
 
@@ -123,7 +126,7 @@ export const Tokens: React.FC = () => {
       setSelectedToken(newToken);
       setShowTokenModal(true);
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to generate token';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -137,21 +140,21 @@ export const Tokens: React.FC = () => {
       setSelectedToken(fullToken);
       setShowTokenModal(true);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to retrieve token');
+      toast.error(error.response?.data?.message || t('errors.somethingWentWrong'));
     }
   };
 
   const handleCopyToken = () => {
     if (selectedToken?.accessToken) {
       navigator.clipboard.writeText(selectedToken.accessToken);
-      toast.success('Token copied to clipboard!');
+      toast.success(t('tokens.copy') + '!');
     }
   };
 
   const handleCopyRefreshToken = () => {
     if (selectedToken?.refreshToken) {
       navigator.clipboard.writeText(selectedToken.refreshToken);
-      toast.success('Refresh token copied to clipboard!');
+      toast.success(t('tokens.copy') + '!');
     }
   };
 
@@ -166,9 +169,7 @@ export const Tokens: React.FC = () => {
   const handleDelete = async (token: SavedToken) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete the token "${
-          token.name || token.tokenType + ' token'
-        }"?`
+        t('tokens.deleteConfirmation')
       )
     ) {
       return;
@@ -176,30 +177,30 @@ export const Tokens: React.FC = () => {
 
     try {
       await tokenService.deleteToken(token.id);
-      toast.success('Token deleted successfully');
+      toast.success(t('tokens.tokenDeleted'));
       loadTokens();
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to delete token';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
     }
   };
 
   const handleRefreshToken = async (token: SavedToken) => {
     if (token.tokenType !== 'user') {
-      toast.error('Only user tokens can be refreshed');
+      toast.error(t('tokens.noRefresh'));
       return;
     }
 
     try {
       const refreshedToken = await tokenService.refreshToken(token.id);
-      toast.success('Token refreshed successfully!');
+      toast.success(t('tokens.tokenRefreshed'));
       loadTokens();
 
       // Show the refreshed token
       setSelectedToken(refreshedToken);
       setShowTokenModal(true);
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to refresh token';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
     }
   };
@@ -212,12 +213,12 @@ export const Tokens: React.FC = () => {
       setShowValidationModal(true);
 
       if (result.valid) {
-        toast.success('Token is valid!');
+        toast.success(t('configurations.credentialsValid') + '!');
       } else {
-        toast.error('Token is invalid or expired');
+        toast.error(t('configurations.credentialsInvalid'));
       }
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to validate token';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
     }
   };
@@ -225,7 +226,7 @@ export const Tokens: React.FC = () => {
   // User Token Functions
   const handleOpenUserTokenModal = () => {
     if (configs.length === 0) {
-      toast.error('Please create a Twitch configuration first');
+      toast.error(t('configurations.noConfigurations'));
       navigate('/twitch-configs');
       return;
     }
@@ -341,12 +342,12 @@ export const Tokens: React.FC = () => {
     e.preventDefault();
 
     if (!userTokenFormData.twitchConfigId) {
-      toast.error('Please select a configuration');
+      toast.error(t('configurations.noConfigurations'));
       return;
     }
 
     if (userTokenFormData.scopes.length === 0) {
-      toast.error('Please select at least one scope');
+      toast.error(t('tokens.selectScopes'));
       return;
     }
 
@@ -367,7 +368,7 @@ export const Tokens: React.FC = () => {
       // Start polling
       startPolling(flowData.deviceCode, flowData.interval);
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to start user token flow';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -388,7 +389,7 @@ export const Tokens: React.FC = () => {
         if (result.status === 'success' && result.token) {
           stopPolling();
           setShowDeviceFlowModal(false);
-          toast.success('User access token generated successfully!');
+          toast.success(t('tokens.tokenGenerated'));
           loadTokens();
 
           // Show the token
@@ -397,17 +398,17 @@ export const Tokens: React.FC = () => {
         } else if (result.status === 'denied') {
           stopPolling();
           setShowDeviceFlowModal(false);
-          toast.error('Authorization was denied');
+          toast.error(t('errors.unauthorized'));
         } else if (result.status === 'expired') {
           stopPolling();
           setShowDeviceFlowModal(false);
-          toast.error('Authorization code expired. Please try again.');
+          toast.error(t('errors.somethingWentWrong'));
         }
         // If 'pending', continue polling
       } catch (error: any) {
         stopPolling();
         setShowDeviceFlowModal(false);
-        const message = error.response?.data?.message || 'Failed to complete authorization';
+        const message = error.response?.data?.message || t('errors.somethingWentWrong');
         toast.error(message);
       }
     };
@@ -480,26 +481,28 @@ export const Tokens: React.FC = () => {
                 onClick={() => navigate('/dashboard')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Dashboard
+                {t('common.dashboard')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/twitch-configs')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Configurations
+                {t('common.configurations')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/api-tester')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                API Tester
+                {t('common.apiTester')}
               </button>
+              <span className="text-gray-600">|</span>
+              <LanguageSelector />
               <span className="text-gray-600">|</span>
               <span className="text-gray-300">{user?.name || user?.email}</span>
               <Button variant="secondary" onClick={handleLogout}>
-                Logout
+                {t('common.logout')}
               </Button>
             </div>
           </div>
@@ -511,17 +514,17 @@ export const Tokens: React.FC = () => {
         {/* Page Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Token Manager</h1>
-            <p className="text-white/60">Generate and manage your Twitch API tokens</p>
+            <h1 className="text-3xl font-bold text-white mb-2">{t('tokens.title')}</h1>
+            <p className="text-white/60">{t('tokens.subtitle')}</p>
           </div>
           <div className="flex gap-3">
             <Button onClick={handleOpenGenerateModal} variant="secondary">
               <span className="text-xl mr-2">+</span>
-              App Token
+              {t('tokens.appToken')}
             </Button>
             <Button onClick={handleOpenUserTokenModal}>
               <span className="text-xl mr-2">+</span>
-              User Token
+              {t('tokens.userToken')}
             </Button>
           </div>
         </div>
@@ -535,11 +538,11 @@ export const Tokens: React.FC = () => {
           /* Empty State */
           <Card className="text-center py-12">
             <div className="text-6xl mb-4">🔑</div>
-            <h2 className="text-xl font-semibold text-white mb-2">No tokens yet</h2>
+            <h2 className="text-xl font-semibold text-white mb-2">{t('tokens.noTokens')}</h2>
             <p className="text-white/60 mb-6">
-              Generate your first App Access Token to get started
+              {t('tokens.noTokensText')}
             </p>
-            <Button onClick={handleOpenGenerateModal}>Generate App Token</Button>
+            <Button onClick={handleOpenGenerateModal}>{t('tokens.generateToken')}</Button>
           </Card>
         ) : (
           /* Tokens List */

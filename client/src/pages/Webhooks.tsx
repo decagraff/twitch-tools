@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
+import LanguageSelector from '../components/LanguageSelector';
 import { useAuthStore } from '../store/authStore';
 import webhookService from '../services/webhookService';
 import tokenService from '../services/tokenService';
@@ -11,6 +13,7 @@ import twitchConfigService from '../services/twitchConfigService';
 import type { Webhook, EventSubType, SavedToken, TwitchConfig } from '../types/index';
 
 export const Webhooks: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
@@ -64,7 +67,7 @@ export const Webhooks: React.FC = () => {
         setFormData(prev => ({ ...prev, tokenId: userTokens[0].id }));
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load data');
+      toast.error(error.response?.data?.message || t('errors.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +76,7 @@ export const Webhooks: React.FC = () => {
   const handleOpenCreateModal = () => {
     const userTokens = tokens.filter(t => t.tokenType === 'user');
     if (userTokens.length === 0) {
-      toast.error('You need at least one user token to create webhooks');
+      toast.error(t('tokens.noTokens'));
       navigate('/tokens');
       return;
     }
@@ -87,7 +90,7 @@ export const Webhooks: React.FC = () => {
     try {
       const selectedType = eventTypes.find(t => t.type === formData.type);
       if (!selectedType) {
-        toast.error('Please select an event type');
+        toast.error(t('errors.requiredField'));
         return;
       }
 
@@ -96,7 +99,7 @@ export const Webhooks: React.FC = () => {
       // Build condition based on required fields
       if (selectedType.condition.broadcaster_user_id) {
         if (!formData.broadcasterUserId) {
-          toast.error('Broadcaster User ID is required');
+          toast.error(t('errors.requiredField'));
           return;
         }
         condition.broadcaster_user_id = formData.broadcasterUserId;
@@ -104,7 +107,7 @@ export const Webhooks: React.FC = () => {
 
       if (selectedType.condition.moderator_user_id) {
         if (!formData.moderatorUserId) {
-          toast.error('Moderator User ID is required');
+          toast.error(t('errors.requiredField'));
           return;
         }
         condition.moderator_user_id = formData.moderatorUserId;
@@ -112,7 +115,7 @@ export const Webhooks: React.FC = () => {
 
       if (selectedType.condition.to_broadcaster_user_id) {
         if (!formData.broadcasterUserId) {
-          toast.error('To Broadcaster User ID is required');
+          toast.error(t('errors.requiredField'));
           return;
         }
         condition.to_broadcaster_user_id = formData.broadcasterUserId;
@@ -125,7 +128,7 @@ export const Webhooks: React.FC = () => {
         callbackUrl: formData.callbackUrl,
       });
 
-      toast.success('EventSub subscription created successfully!');
+      toast.success(t('webhooks.webhookCreated'));
       setShowCreateModal(false);
       setFormData({
         tokenId: tokens[0]?.id || '',
@@ -136,7 +139,7 @@ export const Webhooks: React.FC = () => {
       });
       loadData();
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to create webhook';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -144,23 +147,23 @@ export const Webhooks: React.FC = () => {
   };
 
   const handleDelete = async (webhook: Webhook) => {
-    if (!window.confirm(`Are you sure you want to delete this webhook subscription?\n\nType: ${webhook.type}`)) {
+    if (!window.confirm(t('webhooks.deleteConfirmation', { type: webhook.type }))) {
       return;
     }
 
     try {
       await webhookService.deleteWebhook(webhook.id);
-      toast.success('Webhook deleted successfully');
+      toast.success(t('webhooks.webhookDeleted'));
       loadData();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to delete webhook');
+      toast.error(error.response?.data?.message || t('errors.somethingWentWrong'));
     }
   };
 
   const handleSync = async () => {
     const hasAppToken = tokens.some(t => t.tokenType === 'app');
     if (!hasAppToken) {
-      toast.error('You need at least one app token to sync webhooks. Create an app token first.');
+      toast.error(t('webhooks.needAppToken'));
       return;
     }
 
@@ -168,16 +171,18 @@ export const Webhooks: React.FC = () => {
       setIsSyncing(true);
       const result = await webhookService.syncWebhooks(selectedConfigForSync || undefined);
 
-      let message = `Sync completed: ${result.total} total subscriptions found`;
-      if (result.imported > 0) message += `, ${result.imported} imported`;
-      if (result.updated > 0) message += `, ${result.updated} updated`;
-      if (result.removed > 0) message += `, ${result.removed} removed`;
-      if (result.configsSynced) message += `\n\nConfigs: ${result.configsSynced}`;
+      let message = t('webhooks.syncCompleted', { total: result.total });
+      if (result.imported > 0 || result.updated > 0 || result.removed > 0) {
+        message += ', ' + t('webhooks.syncStats', { imported: result.imported, updated: result.updated, removed: result.removed });
+      }
+      if (result.configsSynced) {
+        message += '\n\n' + t('webhooks.syncConfigs', { configs: result.configsSynced });
+      }
 
       toast.success(message, { duration: 6000 });
       loadData();
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to sync webhooks';
+      const message = error.response?.data?.message || t('errors.somethingWentWrong');
       toast.error(message, { duration: 5000 });
     } finally {
       setIsSyncing(false);
@@ -255,33 +260,35 @@ export const Webhooks: React.FC = () => {
                 onClick={() => navigate('/dashboard')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Dashboard
+                {t('common.dashboard')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/tokens')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Tokens
+                {t('common.tokens')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/twitch-configs')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Configurations
+                {t('common.configurations')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/api-tester')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                API Tester
+                {t('common.apiTester')}
               </button>
+              <span className="text-gray-600">|</span>
+              <LanguageSelector />
               <span className="text-gray-600">|</span>
               <span className="text-gray-300">{user?.name || user?.email}</span>
               <Button variant="secondary" onClick={handleLogout}>
-                Logout
+                {t('common.logout')}
               </Button>
             </div>
           </div>
@@ -293,9 +300,9 @@ export const Webhooks: React.FC = () => {
         {/* Page Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">EventSub Webhooks</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">{t('webhooks.title')}</h1>
             <p className="text-white/60">
-              Manage your Twitch EventSub subscriptions
+              {t('webhooks.subtitle')}
             </p>
           </div>
           <div className="flex gap-3 items-center">
@@ -306,7 +313,7 @@ export const Webhooks: React.FC = () => {
               disabled={isSyncing}
               className="px-3 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-twitch-purple disabled:opacity-50"
             >
-              <option value="">All Configurations</option>
+              <option value="">{t('webhooks.allConfigurations')}</option>
               {configs.map(config => (
                 <option key={config.id} value={config.id}>
                   {config.name || config.clientId}
@@ -332,11 +339,11 @@ export const Webhooks: React.FC = () => {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              {isSyncing ? 'Syncing...' : 'Sync'}
+              {isSyncing ? t('webhooks.syncing') : t('webhooks.sync')}
             </button>
             <Button onClick={handleOpenCreateModal}>
               <span className="text-xl mr-2">+</span>
-              Create Subscription
+              {t('webhooks.createSubscription')}
             </Button>
           </div>
         </div>
@@ -353,10 +360,10 @@ export const Webhooks: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <h3 className="text-xl font-semibold text-white mb-2">
-                No EventSub subscriptions found
+                {t('webhooks.noWebhooks')}
               </h3>
               <p className="text-white/60 mb-6">
-                Create a new EventSub subscription or sync existing subscriptions from Twitch
+                {t('webhooks.noWebhooksText')}
               </p>
               <div className="flex gap-3 justify-center">
                 <button
@@ -377,9 +384,9 @@ export const Webhooks: React.FC = () => {
                       d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                     />
                   </svg>
-                  {isSyncing ? 'Syncing...' : 'Sync with Twitch'}
+                  {isSyncing ? t('webhooks.syncing') : t('webhooks.syncWithTwitch')}
                 </button>
-                <Button onClick={handleOpenCreateModal}>Create Subscription</Button>
+                <Button onClick={handleOpenCreateModal}>{t('webhooks.createSubscription')}</Button>
               </div>
             </div>
           </Card>
@@ -391,7 +398,7 @@ export const Webhooks: React.FC = () => {
               <div className="md:col-span-1">
                 <input
                   type="text"
-                  placeholder="Search by broadcaster ID, type..."
+                  placeholder={t('webhooks.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full px-4 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-twitch-purple"
@@ -405,7 +412,7 @@ export const Webhooks: React.FC = () => {
                   onChange={(e) => setFilterType(e.target.value)}
                   className="w-full px-4 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white focus:outline-none focus:border-twitch-purple"
                 >
-                  <option value="">All Types</option>
+                  <option value="">{t('webhooks.allTypes')}</option>
                   {uniqueTypes.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
@@ -419,7 +426,7 @@ export const Webhooks: React.FC = () => {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="w-full px-4 py-2 bg-twitch-dark-light border border-white/10 rounded-lg text-white focus:outline-none focus:border-twitch-purple"
                 >
-                  <option value="">All Statuses</option>
+                  <option value="">{t('webhooks.allStatuses')}</option>
                   {uniqueStatuses.map(status => (
                     <option key={status} value={status}>{status}</option>
                   ))}
@@ -430,11 +437,11 @@ export const Webhooks: React.FC = () => {
             {/* Stats Summary */}
             <div className="mb-4 flex items-center justify-between bg-twitch-dark-light rounded-lg p-3">
               <div className="flex items-center gap-4 text-sm text-white/60">
-                <span>{Object.keys(groupedWebhooks).length} Broadcaster(s)</span>
+                <span>{t('webhooks.broadcasters', { count: Object.keys(groupedWebhooks).length })}</span>
                 <span>•</span>
-                <span>{filteredWebhooks.length} Subscription(s)</span>
+                <span>{t('webhooks.subscriptions', { count: filteredWebhooks.length })}</span>
                 <span>•</span>
-                <span>Total Cost: {filteredWebhooks.reduce((sum, w) => sum + w.cost, 0)}</span>
+                <span>{t('webhooks.totalCost', { cost: filteredWebhooks.reduce((sum, w) => sum + w.cost, 0) })}</span>
               </div>
             </div>
 
@@ -465,21 +472,21 @@ export const Webhooks: React.FC = () => {
                         </svg>
                         <div className="text-left">
                           <h3 className="text-lg font-semibold text-white">
-                            Broadcaster ID: <span className="font-mono">{broadcasterId}</span>
+                            {t('webhooks.broadcaster')} ID: <span className="font-mono">{broadcasterId}</span>
                           </h3>
                           <p className="text-xs text-white/60">
-                            {groupWebhooks.length} subscription(s) • {enabledCount} enabled
+                            {t('webhooks.subscriptions', { count: groupWebhooks.length })} • {enabledCount} {t('webhooks.status.enabled').toLowerCase()}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {groupWebhooks.some(w => w.status === 'enabled') && (
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
-                            Active
+                            {t('webhooks.active')}
                           </span>
                         )}
                         <span className="text-xs text-white/40">
-                          {isCollapsed ? 'Expand' : 'Collapse'}
+                          {isCollapsed ? t('webhooks.expand') : t('webhooks.collapse')}
                         </span>
                       </div>
                     </button>
@@ -505,7 +512,7 @@ export const Webhooks: React.FC = () => {
                       </span>
                       {webhook.cost > 0 && (
                         <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full">
-                          Cost: {webhook.cost}
+                          {t('webhooks.cost', { cost: webhook.cost })}
                         </span>
                       )}
                     </div>
@@ -513,7 +520,7 @@ export const Webhooks: React.FC = () => {
                     {/* Conditions - Main info */}
                     {webhook.condition && (
                       <div className="bg-twitch-dark-light rounded-lg p-3 mb-3">
-                        <h4 className="text-sm font-semibold text-white/80 mb-2">Conditions:</h4>
+                        <h4 className="text-sm font-semibold text-white/80 mb-2">{t('webhooks.conditions')}:</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {webhook.condition.broadcaster_user_id && (
                             <div className="flex items-center gap-2">
@@ -521,7 +528,7 @@ export const Webhooks: React.FC = () => {
                                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                               </svg>
                               <div>
-                                <span className="text-xs text-white/40">Broadcaster:</span>
+                                <span className="text-xs text-white/40">{t('webhooks.broadcaster')}:</span>
                                 <p className="text-sm text-white font-mono">{webhook.condition.broadcaster_user_id}</p>
                               </div>
                             </div>
@@ -532,7 +539,7 @@ export const Webhooks: React.FC = () => {
                                 <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                               </svg>
                               <div>
-                                <span className="text-xs text-white/40">Moderator:</span>
+                                <span className="text-xs text-white/40">{t('webhooks.moderator')}:</span>
                                 <p className="text-sm text-white font-mono">{webhook.condition.moderator_user_id}</p>
                               </div>
                             </div>
@@ -543,7 +550,7 @@ export const Webhooks: React.FC = () => {
                                 <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                               </svg>
                               <div>
-                                <span className="text-xs text-white/40">To Broadcaster:</span>
+                                <span className="text-xs text-white/40">{t('webhooks.toBroadcaster')}:</span>
                                 <p className="text-sm text-white font-mono">{webhook.condition.to_broadcaster_user_id}</p>
                               </div>
                             </div>
@@ -555,14 +562,14 @@ export const Webhooks: React.FC = () => {
                     {/* Technical details */}
                     <div className="space-y-1">
                       <p className="text-sm text-white/60">
-                        <span className="font-medium">Subscription ID:</span> {webhook.subscriptionId}
+                        <span className="font-medium">{t('webhooks.subscriptionId')}:</span> {webhook.subscriptionId}
                       </p>
                       <p className="text-sm text-white/60">
-                        <span className="font-medium">Callback:</span>{' '}
+                        <span className="font-medium">{t('webhooks.callback')}:</span>{' '}
                         <span className="text-xs font-mono">{webhook.callbackUrl}</span>
                       </p>
                       <p className="text-xs text-white/40">
-                        Created: {formatDate(webhook.createdAt)}
+                        {t('webhooks.created')}: {formatDate(webhook.createdAt)}
                       </p>
                     </div>
                   </div>
@@ -571,7 +578,7 @@ export const Webhooks: React.FC = () => {
                     variant="secondary"
                     className="ml-4"
                   >
-                    Delete
+                    {t('common.delete')}
                   </Button>
                 </div>
                           </Card>
@@ -591,7 +598,7 @@ export const Webhooks: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-white">Create EventSub Subscription</h2>
+              <h2 className="text-2xl font-bold text-white">{t('webhooks.createSubscription')}</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="text-white/60 hover:text-white text-2xl"
@@ -604,7 +611,7 @@ export const Webhooks: React.FC = () => {
               {/* Token Selector */}
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Token
+                  {t('common.tokens')}
                 </label>
                 <select
                   value={formData.tokenId}
@@ -623,7 +630,7 @@ export const Webhooks: React.FC = () => {
               {/* Event Type */}
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Event Type
+                  {t('apiTester.endpoint')}
                 </label>
                 <select
                   value={formData.type}
@@ -631,7 +638,7 @@ export const Webhooks: React.FC = () => {
                   className="w-full px-4 py-2 bg-twitch-dark-light border border-twitch-gray-dark text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-twitch-purple"
                   required
                 >
-                  <option value="">Select event type...</option>
+                  <option value="">{t('errors.requiredField')}</option>
                   {eventTypes.map((type) => (
                     <option key={type.type} value={type.type}>
                       {type.type} - {type.description}
@@ -644,7 +651,7 @@ export const Webhooks: React.FC = () => {
               {selectedType && (selectedType.condition.broadcaster_user_id || selectedType.condition.to_broadcaster_user_id) && (
                 <div>
                   <label className="block text-sm font-medium text-white/80 mb-2">
-                    Broadcaster User ID *
+                    {t('webhooks.broadcaster')} User ID *
                   </label>
                   <input
                     type="text"
@@ -664,7 +671,7 @@ export const Webhooks: React.FC = () => {
               {selectedType && selectedType.condition.moderator_user_id === 'required' && (
                 <div>
                   <label className="block text-sm font-medium text-white/80 mb-2">
-                    Moderator User ID *
+                    {t('webhooks.moderator')} User ID *
                   </label>
                   <input
                     type="text"
@@ -683,7 +690,7 @@ export const Webhooks: React.FC = () => {
               {/* Callback URL */}
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Callback URL
+                  {t('webhooks.callback')} URL
                 </label>
                 <input
                   type="url"
@@ -710,7 +717,7 @@ export const Webhooks: React.FC = () => {
                   disabled={isSubmitting}
                   className="flex-1"
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Subscription'}
+                  {isSubmitting ? t('common.loading') : t('webhooks.createSubscription')}
                 </Button>
                 <Button
                   type="button"
@@ -718,7 +725,7 @@ export const Webhooks: React.FC = () => {
                   onClick={() => setShowCreateModal(false)}
                   className="flex-1"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </form>

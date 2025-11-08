@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
+import LanguageSelector from '../components/LanguageSelector';
 import { useAuthStore } from '../store/authStore';
 import tokenService from '../services/tokenService';
 import apiLogService from '../services/apiLogService';
@@ -36,6 +38,7 @@ const COMMON_ENDPOINTS = [
 ];
 
 export const ApiTester: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [tokens, setTokens] = useState<SavedToken[]>([]);
@@ -65,7 +68,7 @@ export const ApiTester: React.FC = () => {
         setSelectedTokenId(data[0].id);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load tokens');
+      toast.error(error.response?.data?.message || t('errors.somethingWentWrong'));
     }
   };
 
@@ -102,13 +105,13 @@ export const ApiTester: React.FC = () => {
 
   const handleTestApi = async () => {
     if (!selectedTokenId) {
-      toast.error('Please select a token');
+      toast.error(t('apiTester.selectToken'));
       return;
     }
 
     const endpoint = customEndpoint || (selectedEndpoint.path + selectedEndpoint.params);
     if (!endpoint) {
-      toast.error('Please enter an endpoint');
+      toast.error(t('errors.requiredField'));
       return;
     }
 
@@ -159,9 +162,9 @@ export const ApiTester: React.FC = () => {
       });
 
       if (response.ok) {
-        toast.success('API call successful!');
+        toast.success(t('apiTester.sendRequest') + '!');
       } else {
-        toast.error(`API call failed: ${response.status}`);
+        toast.error(`${t('apiTester.error')}: ${response.status}`);
       }
     } catch (error: any) {
       const call: ApiCall = {
@@ -187,7 +190,7 @@ export const ApiTester: React.FC = () => {
         console.error('Failed to save log:', err);
       });
 
-      toast.error(error.message || 'API call failed');
+      toast.error(error.message || t('errors.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
@@ -199,7 +202,7 @@ export const ApiTester: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard!');
+    toast.success(t('tokens.copy') + '!');
   };
 
   return (
@@ -214,26 +217,28 @@ export const ApiTester: React.FC = () => {
                 onClick={() => navigate('/dashboard')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Dashboard
+                {t('common.dashboard')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/tokens')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Tokens
+                {t('common.tokens')}
               </button>
               <span className="text-gray-600">|</span>
               <button
                 onClick={() => navigate('/twitch-configs')}
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Configurations
+                {t('common.configurations')}
               </button>
+              <span className="text-gray-600">|</span>
+              <LanguageSelector />
               <span className="text-gray-600">|</span>
               <span className="text-gray-300">{user?.name || user?.email}</span>
               <Button variant="secondary" onClick={handleLogout}>
-                Logout
+                {t('common.logout')}
               </Button>
             </div>
           </div>
@@ -243,20 +248,20 @@ export const ApiTester: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">API Tester</h1>
-          <p className="text-white/60">Test Twitch API endpoints with your tokens</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{t('apiTester.title')}</h1>
+          <p className="text-white/60">{t('apiTester.subtitle')}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel - Request Configuration */}
           <div className="space-y-6">
             <Card>
-              <h2 className="text-xl font-bold text-white mb-4">Request Configuration</h2>
+              <h2 className="text-xl font-bold text-white mb-4">{t('apiTester.sendRequest')}</h2>
 
               {/* Token Selector */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Select Token
+                  {t('apiTester.selectToken')}
                 </label>
                 <select
                   value={selectedTokenId}
@@ -264,7 +269,7 @@ export const ApiTester: React.FC = () => {
                   className="w-full px-4 py-2 bg-twitch-dark-light border border-twitch-gray-dark text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-twitch-purple"
                 >
                   {tokens.length === 0 && (
-                    <option value="">No tokens available</option>
+                    <option value="">{t('apiTester.noTokens')}</option>
                   )}
                   {tokens.map((token) => (
                     <option key={token.id} value={token.id}>
@@ -274,7 +279,7 @@ export const ApiTester: React.FC = () => {
                 </select>
                 {tokens.length === 0 && (
                   <p className="text-xs text-red-400 mt-1">
-                    No tokens found. <button onClick={() => navigate('/tokens')} className="underline">Create one</button>
+                    {t('apiTester.noTokens')}. <button onClick={() => navigate('/tokens')} className="underline">{t('apiTester.createTokenFirst')}</button>
                   </p>
                 )}
               </div>
@@ -282,7 +287,7 @@ export const ApiTester: React.FC = () => {
               {/* Endpoint Selector */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Common Endpoints
+                  {t('apiTester.endpoint')}
                 </label>
                 <select
                   onChange={(e) => handleEndpointChange(Number(e.target.value))}
@@ -299,7 +304,7 @@ export const ApiTester: React.FC = () => {
               {/* Method Selector */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Method
+                  {t('apiTester.method')}
                 </label>
                 <select
                   value={method}
@@ -317,7 +322,7 @@ export const ApiTester: React.FC = () => {
               {/* Custom Endpoint */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Endpoint Path
+                  {t('apiTester.endpoint')}
                 </label>
                 <div className="flex items-center gap-2">
                   <span className="text-white/60 text-sm">https://api.twitch.tv/helix</span>
@@ -325,7 +330,7 @@ export const ApiTester: React.FC = () => {
                     type="text"
                     value={customEndpoint}
                     onChange={(e) => setCustomEndpoint(e.target.value)}
-                    placeholder="/users?login=twitch"
+                    placeholder={t('apiTester.endpointPlaceholder')}
                     className="flex-1 px-4 py-2 bg-twitch-dark-light border border-twitch-gray-dark text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-twitch-purple"
                   />
                 </div>
@@ -340,15 +345,15 @@ export const ApiTester: React.FC = () => {
                 disabled={isLoading || !selectedTokenId}
                 className="w-full"
               >
-                {isLoading ? 'Testing...' : 'Test API'}
+                {isLoading ? t('apiTester.sending') : t('apiTester.sendRequest')}
               </Button>
             </Card>
 
             {/* History */}
             <Card>
-              <h2 className="text-xl font-bold text-white mb-4">History</h2>
+              <h2 className="text-xl font-bold text-white mb-4">{t('apiTester.requestHistory')}</h2>
               {history.length === 0 ? (
-                <p className="text-white/40 text-center py-8">No API calls yet</p>
+                <p className="text-white/40 text-center py-8">{t('apiTester.noHistory')}</p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {history.map((call) => (
@@ -398,13 +403,13 @@ export const ApiTester: React.FC = () => {
           <div>
             <Card>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Response</h2>
+                <h2 className="text-xl font-bold text-white">{t('apiTester.response')}</h2>
                 {selectedCall && selectedCall.response && (
                   <Button
                     onClick={() => copyToClipboard(formatJson(selectedCall.response))}
                     variant="secondary"
                   >
-                    Copy JSON
+                    {t('tokens.copy')} JSON
                   </Button>
                 )}
               </div>
@@ -414,14 +419,14 @@ export const ApiTester: React.FC = () => {
                   <svg className="w-16 h-16 mx-auto text-white/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <p className="text-white/40">Make an API call to see the response</p>
+                  <p className="text-white/40">{t('apiTester.noHistoryText')}</p>
                 </div>
               ) : (
                 <div>
                   {/* Status */}
                   <div className="mb-4 p-3 rounded-lg bg-twitch-dark-light">
                     <div className="flex items-center justify-between">
-                      <span className="text-white/60 text-sm">Status:</span>
+                      <span className="text-white/60 text-sm">{t('apiTester.status')}:</span>
                       {selectedCall.status ? (
                         <span className={`px-3 py-1 rounded text-sm font-medium ${
                           selectedCall.status >= 200 && selectedCall.status < 300
@@ -436,7 +441,7 @@ export const ApiTester: React.FC = () => {
                         </span>
                       ) : (
                         <span className="px-3 py-1 rounded text-sm font-medium bg-red-500/20 text-red-400">
-                          Error
+                          {t('apiTester.error')}
                         </span>
                       )}
                     </div>
@@ -445,7 +450,7 @@ export const ApiTester: React.FC = () => {
                   {/* Response Body */}
                   {selectedCall.error ? (
                     <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                      <p className="text-red-400 font-medium mb-2">Error</p>
+                      <p className="text-red-400 font-medium mb-2">{t('apiTester.error')}</p>
                       <p className="text-red-300 text-sm">{selectedCall.error}</p>
                     </div>
                   ) : (

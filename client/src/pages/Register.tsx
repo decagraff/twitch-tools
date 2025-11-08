@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { register, isLoading, error } = useAuthStore();
 
   const [formData, setFormData] = useState({
@@ -29,21 +31,21 @@ export const Register: React.FC = () => {
     const newErrors: typeof errors = {};
 
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('errors.requiredField');
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = t('errors.invalidEmail');
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('errors.requiredField');
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = t('errors.passwordTooShort');
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = t('errors.requiredField');
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t('errors.passwordsDoNotMatch');
     }
 
     setErrors(newErrors);
@@ -63,10 +65,10 @@ export const Register: React.FC = () => {
         password: formData.password,
         name: formData.name || undefined,
       });
-      toast.success('Account created successfully!');
+      toast.success(t('auth.welcome'));
       navigate('/dashboard');
     } catch (err) {
-      toast.error(error || 'Failed to create account');
+      toast.error(error || t('errors.somethingWentWrong'));
     }
   };
 
@@ -89,14 +91,14 @@ export const Register: React.FC = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Logo className="justify-center mb-4" />
-          <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-          <p className="text-gray-400">Get started with Twitch Tools</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{t('auth.createAccount')}</h1>
+          <p className="text-gray-400">{t('auth.register')}</p>
         </div>
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              label="Name (Optional)"
+              label={t('auth.name')}
               type="text"
               name="name"
               placeholder="John Doe"
@@ -107,7 +109,7 @@ export const Register: React.FC = () => {
             />
 
             <Input
-              label="Email"
+              label={t('auth.email')}
               type="email"
               name="email"
               placeholder="you@example.com"
@@ -118,7 +120,7 @@ export const Register: React.FC = () => {
             />
 
             <Input
-              label="Password"
+              label={t('auth.password')}
               type="password"
               name="password"
               placeholder="••••••••"
@@ -129,7 +131,7 @@ export const Register: React.FC = () => {
             />
 
             <Input
-              label="Confirm Password"
+              label={t('auth.confirmPassword')}
               type="password"
               name="confirmPassword"
               placeholder="••••••••"
@@ -151,18 +153,18 @@ export const Register: React.FC = () => {
               isLoading={isLoading}
               disabled={isLoading}
             >
-              Create Account
+              {t('auth.createAccount')}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
-              Already have an account?{' '}
+              {t('auth.alreadyHaveAccount')}{' '}
               <Link
                 to="/login"
                 className="text-twitch-purple hover:text-twitch-purple-light font-medium"
               >
-                Sign in
+                {t('auth.loginHere')}
               </Link>
             </p>
           </div>
@@ -173,7 +175,7 @@ export const Register: React.FC = () => {
             to="/"
             className="text-gray-400 hover:text-white text-sm transition-colors"
           >
-            ← Back to home
+            ← {t('common.dashboard')}
           </Link>
         </div>
       </div>

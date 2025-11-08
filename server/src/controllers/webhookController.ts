@@ -272,16 +272,16 @@ export async function getRemoteWebhooks(req: Request, res: Response): Promise<vo
   try {
     const userId = req.user!.userId;
 
-    // Get any user token to call Twitch API
+    // Get an app token to call Twitch API (app tokens are required for EventSub list)
     const token = await prisma.savedToken.findFirst({
-      where: { userId, tokenType: 'user' },
+      where: { userId, tokenType: 'app' },
       include: { twitchConfig: true },
     });
 
     if (!token) {
       res.status(404).json({
         error: 'Not found',
-        message: 'No user token found. Create a user token first to fetch remote subscriptions.',
+        message: 'No app token found. Create an app token first to fetch remote subscriptions.',
       });
       return;
     }
@@ -329,16 +329,16 @@ export async function syncWebhooks(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user!.userId;
 
-    // Get any user token to call Twitch API
+    // Get an app token to call Twitch API (app tokens are required for EventSub list)
     const token = await prisma.savedToken.findFirst({
-      where: { userId, tokenType: 'user' },
+      where: { userId, tokenType: 'app' },
       include: { twitchConfig: true },
     });
 
     if (!token) {
       res.status(404).json({
         error: 'Not found',
-        message: 'No user token found. Create a user token first to sync subscriptions.',
+        message: 'No app token found. Create an app token first to sync subscriptions.',
       });
       return;
     }

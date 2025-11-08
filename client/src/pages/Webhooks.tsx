@@ -47,10 +47,12 @@ export const Webhooks: React.FC = () => {
 
       setWebhooks(webhooksData);
       setEventTypes(typesData);
-      setTokens(tokensData.filter(t => t.tokenType === 'user'));
+      setTokens(tokensData); // Keep all tokens to check for app tokens
 
-      if (tokensData.length > 0) {
-        setFormData(prev => ({ ...prev, tokenId: tokensData[0].id }));
+      // Set default token to first user token for webhook creation
+      const userTokens = tokensData.filter(t => t.tokenType === 'user');
+      if (userTokens.length > 0) {
+        setFormData(prev => ({ ...prev, tokenId: userTokens[0].id }));
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load data');
@@ -60,7 +62,8 @@ export const Webhooks: React.FC = () => {
   };
 
   const handleOpenCreateModal = () => {
-    if (tokens.length === 0) {
+    const userTokens = tokens.filter(t => t.tokenType === 'user');
+    if (userTokens.length === 0) {
       toast.error('You need at least one user token to create webhooks');
       navigate('/tokens');
       return;
@@ -146,8 +149,9 @@ export const Webhooks: React.FC = () => {
   };
 
   const handleSync = async () => {
-    if (tokens.length === 0) {
-      toast.error('You need at least one user token to sync webhooks');
+    const hasAppToken = tokens.some(t => t.tokenType === 'app');
+    if (!hasAppToken) {
+      toast.error('You need at least one app token to sync webhooks. Create an app token first.');
       return;
     }
 
@@ -234,7 +238,7 @@ export const Webhooks: React.FC = () => {
           <div className="flex gap-3">
             <button
               onClick={handleSync}
-              disabled={isSyncing || tokens.length === 0}
+              disabled={isSyncing || !tokens.some(t => t.tokenType === 'app')}
               className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
             >
               <svg
@@ -279,7 +283,7 @@ export const Webhooks: React.FC = () => {
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={handleSync}
-                  disabled={isSyncing || tokens.length === 0}
+                  disabled={isSyncing || !tokens.some(t => t.tokenType === 'app')}
                   className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
                 >
                   <svg

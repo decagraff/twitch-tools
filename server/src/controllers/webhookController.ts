@@ -95,6 +95,7 @@ export async function createWebhook(req: Request, res: Response): Promise<void> 
         userId,
         subscriptionId: subscription.id,
         type: subscription.type,
+        condition: subscription.condition,
         callbackUrl,
         status: subscription.status,
         cost: subscription.cost || 0,
@@ -375,6 +376,7 @@ export async function syncWebhooks(req: Request, res: Response): Promise<void> {
             userId,
             subscriptionId: sub.id,
             type: sub.type,
+            condition: sub.condition,
             callbackUrl: sub.transport.callback,
             status: sub.status,
             cost: sub.cost || 0,
@@ -382,7 +384,7 @@ export async function syncWebhooks(req: Request, res: Response): Promise<void> {
         });
         importedCount++;
       } else {
-        // Update existing webhook status
+        // Update existing webhook status and condition
         await prisma.webhook.updateMany({
           where: {
             userId,
@@ -390,6 +392,7 @@ export async function syncWebhooks(req: Request, res: Response): Promise<void> {
           },
           data: {
             status: sub.status,
+            condition: sub.condition,
             cost: sub.cost || 0,
           },
         });

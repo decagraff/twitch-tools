@@ -77,6 +77,7 @@ model Webhook {
   userId           String
   subscriptionId   String   @unique // From Twitch EventSub
   type             String   // EventSub subscription type
+  condition        Json?    // EventSub conditions (broadcaster_user_id, moderator_user_id, etc.)
   callbackUrl      String
   status           String   // enabled, webhook_callback_verification_pending, etc.
   cost             Int      @default(0)

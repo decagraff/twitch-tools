@@ -164,6 +164,7 @@ export interface Webhook {
   id: string;
   subscriptionId: string;
   type: string;
+  condition?: Record<string, string>;
   callbackUrl: string;
   status: string;
   cost: number;

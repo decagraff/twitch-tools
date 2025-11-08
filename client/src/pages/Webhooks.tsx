@@ -311,7 +311,8 @@ export const Webhooks: React.FC = () => {
               <Card key={webhook.id}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    {/* Header with type and status */}
+                    <div className="flex items-center gap-3 mb-3">
                       <h3 className="text-lg font-semibold text-white">{webhook.type}</h3>
                       <span className={`px-2 py-0.5 text-xs rounded-full ${
                         webhook.status === 'enabled'
@@ -328,12 +329,57 @@ export const Webhooks: React.FC = () => {
                         </span>
                       )}
                     </div>
+
+                    {/* Conditions - Main info */}
+                    {webhook.condition && (
+                      <div className="bg-twitch-dark-light rounded-lg p-3 mb-3">
+                        <h4 className="text-sm font-semibold text-white/80 mb-2">Conditions:</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {webhook.condition.broadcaster_user_id && (
+                            <div className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-twitch-purple" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                              </svg>
+                              <div>
+                                <span className="text-xs text-white/40">Broadcaster:</span>
+                                <p className="text-sm text-white font-mono">{webhook.condition.broadcaster_user_id}</p>
+                              </div>
+                            </div>
+                          )}
+                          {webhook.condition.moderator_user_id && (
+                            <div className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              <div>
+                                <span className="text-xs text-white/40">Moderator:</span>
+                                <p className="text-sm text-white font-mono">{webhook.condition.moderator_user_id}</p>
+                              </div>
+                            </div>
+                          )}
+                          {webhook.condition.to_broadcaster_user_id && (
+                            <div className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                              </svg>
+                              <div>
+                                <span className="text-xs text-white/40">To Broadcaster:</span>
+                                <p className="text-sm text-white font-mono">{webhook.condition.to_broadcaster_user_id}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Technical details */}
                     <div className="space-y-1">
                       <p className="text-sm text-white/60">
                         <span className="font-medium">Subscription ID:</span> {webhook.subscriptionId}
                       </p>
                       <p className="text-sm text-white/60">
-                        <span className="font-medium">Callback:</span> {webhook.callbackUrl}
+                        <span className="font-medium">Callback:</span>{' '}
+                        <span className="text-xs font-mono">{webhook.callbackUrl}</span>
                       </p>
                       <p className="text-xs text-white/40">
                         Created: {formatDate(webhook.createdAt)}

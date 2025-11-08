@@ -30,19 +30,54 @@ A modern, full-stack web application for managing Twitch OAuth tokens and EventS
 - Generate **App Access Tokens** using Client Credentials Flow
 - Custom **scope selection** for granular permissions
 - Token validation and expiration tracking
+- Token refresh functionality for user tokens
+- **Show/Hide** sensitive token data (access token, refresh token)
 - Secure storage with **AES-256-GCM encryption**
+- **Token count tracking** per configuration
+- **Configuration validation** before saving
 
-### 🪝 **Webhook Manager**
-- List all registered **EventSub webhooks**
+### 📊 **Dashboard**
+- **Real-time channel data** from Twitch API
+- Stream status with animated **LIVE** badge
+- Viewer count, followers, and subscribers metrics
+- Visual stat cards with Twitch branding
+- Automatic data refresh
+- Channel information display
+
+### 🧪 **API Tester**
+- Test Twitch API endpoints interactively
+- Support for GET, POST, PUT, PATCH, DELETE methods
+- **Persistent request history** (database-backed)
+- Load last 20 API calls on page open
+- Token selection dropdown
+- Custom request body editor
+- Response display with status codes
+- Error handling and display
+
+### 🪝 **EventSub Webhook Manager**
+- **Sync with Twitch** - Import existing webhooks automatically
+- **Configuration selector** - Sync all configs or specific ones
+- **Grouped by broadcaster** - Organize by channel/bot
+- **Advanced filtering** - Search by ID, type, or status
+- **Collapsible groups** - Expand/collapse broadcaster sections
+- **Condition display** - See broadcaster_user_id, moderator_user_id
+- **10+ event types** - stream.online, channel.follow, etc.
 - Create and delete webhook subscriptions
-- Monitor webhook status and health
-- Batch webhook operations
-- Real-time webhook event tracking
+- Monitor webhook status (enabled, pending, failed)
+- Real-time sync statistics
+- Cost tracking per subscription
+
+### ⚙️ **Configuration Manager**
+- Multiple Twitch client configurations per user
+- **Credential validation** with Twitch API
+- Visual validation feedback (success/error indicators)
+- **Token count badges** - See active tokens per config
+- **Safe deletion** - Prevents deletion of configs with active tokens
+- Configuration naming for easy identification
 
 ### 👤 **User Management**
 - Secure user registration and authentication
 - **JWT-based** session management
-- Multiple Twitch client configurations per user
 - Personal dashboard with activity logs
 - Password recovery (coming soon)
 
@@ -52,6 +87,7 @@ A modern, full-stack web application for managing Twitch OAuth tokens and EventS
 - Built with **Tailwind CSS 3.4.1**
 - Smooth animations and transitions
 - Accessible components
+- Toast notifications for user feedback
 
 ---
 
